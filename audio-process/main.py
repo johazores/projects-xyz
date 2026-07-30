@@ -7,9 +7,10 @@ from pathlib import Path
 
 from config import AudioConfig
 from providers import get_provider
-from utils.ffmpeg import convert_to_mp3, normalize_audio, trim_audio
+from utils.ffmpeg import convert_to_mp3, enhance_audio, normalize_audio, trim_audio
 from utils.files import create_output_path, ensure_directory
 from utils.retry import run_with_retry
+from utils.transcription import transcribe_audio
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +62,58 @@ def normalize_audio_file(
     """Normalize an audio file and save an MP3."""
 
     source = _existing_file(input_path)
-    destination = ensure_directory(output_dir or config.output_dir) / f"{source.stem}-normalized.mp3"
+    destination = (
+        ensure_directory(output_dir or config.output_dir)
+        / f"{source.stem}-normalized.mp3"
+    )
     logger.info("Normalizing %s...", source)
     return normalize_audio(source, destination)
+
+
+def enhance_audio_file(
+    input_path: str | Path,
+    config: AudioConfig,
+    output_dir: str | Path | None = None,
+) -> Path:
+    """Apply a practical voice-cleanup filter chain and save an MP3."""
+
+    source = _existing_file(input_path)
+    destination = ensure_directory(output_dir or config.output_dir) / f"{source.stem}-enhanced.mp3"
+    logger.info("Enhancing %s...", source)
+    return enhance_audio(source, destination)
+
+
+def transcribe_audio_file(
+    input_path: str | Path,
+    config: AudioConfig,
+    output_format: str = "srt",
+    language: str | None = None,
+    model_name: str | None = None,
+    device: str | None = None,
+    compute_type: str | None = None,
+    output_dir: str | Path | None = None,
+) -> Path:
+    """Create a local transcript or subtitle file with faster-whisper."""
+
+    source = _existing_file(input_path)
+    normalized_format = output_format.lower()
+    if normalized_format not in {"txt", "srt"}:
+        raise ValueError("output_format must be txt or srt.")
+
+    destination = (
+        ensure_directory(output_dir or config.output_dir)
+        / f"{source.stem}-transcript.{normalized_format}"
+    )
+    logger.info("Transcribing %s with %s...", source, model_name or config.transcription_model)
+    return transcribe_audio(
+        source,
+        destination,
+        model_name=model_name or config.transcription_model,
+        device=device or config.transcription_device,
+        compute_type=compute_type or config.transcription_compute_type,
+        language=language or config.transcription_language,
+        output_format=normalized_format,
+    )
 
 
 def trim_audio_file(
@@ -82,7 +132,7 @@ def trim_audio_file(
 
 
 def _existing_file(path: str | Path) -> Path:
-    source = Path(path)
+    source = Path(path).expanduser().resolve()
     if not source.is_file():
         raise FileNotFoundError(f"Audio file not found: {source}")
     return source

@@ -19,6 +19,10 @@ class AudioConfig:
     sample_rate: int = 24_000
     duration_seconds: float = 3.0
     device: str = "auto"
+    transcription_model: str = "small"
+    transcription_device: str = "auto"
+    transcription_compute_type: str = "default"
+    transcription_language: str | None = None
     max_retries: int = 2
     retry_delay_seconds: float = 1.0
     log_level: str = "INFO"

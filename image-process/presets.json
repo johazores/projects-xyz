@@ -1,0 +1,22 @@
+{
+  "youtube-thumbnail": {
+    "template": "YouTube thumbnail, strong focal subject, bold readable composition, high contrast, clean background, space for a short title, 16:9 layout: {prompt}",
+    "negative_prompt": "tiny unreadable text, cluttered layout, low contrast, watermark"
+  },
+  "game-character": {
+    "template": "indie game character portrait, clear silhouette, expressive face, consistent concept art, centered bust composition: {prompt}",
+    "negative_prompt": "cropped head, extra limbs, inconsistent costume, busy background"
+  },
+  "pixel-art": {
+    "template": "pixel art game asset, crisp hard edges, limited color palette, readable at small size, transparent or simple background: {prompt}",
+    "negative_prompt": "anti-aliasing, blurry pixels, photorealistic texture, noisy background"
+  },
+  "item-icon": {
+    "template": "game inventory item icon, centered object, clean silhouette, isolated background, polished readable details: {prompt}",
+    "negative_prompt": "hands, character, scenery, text, watermark, clutter"
+  },
+  "environment-concept": {
+    "template": "indie game environment concept art, strong composition, clear lighting direction, production design reference: {prompt}",
+    "negative_prompt": "text, watermark, distorted architecture, unclear focal point"
+  }
+}

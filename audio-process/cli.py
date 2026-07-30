@@ -6,12 +6,19 @@ import argparse
 import logging
 
 from config import load_config
-from main import convert_audio_file, generate_audio, normalize_audio_file, trim_audio_file
+from main import (
+    convert_audio_file,
+    enhance_audio_file,
+    generate_audio,
+    normalize_audio_file,
+    transcribe_audio_file,
+    trim_audio_file,
+)
 from utils.logging import configure_logging
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate and process audio files.")
+    parser = argparse.ArgumentParser(description="Generate, clean, and transcribe audio files.")
     parser.add_argument("--config", help="Path to a JSON configuration file.")
 
     commands = parser.add_subparsers(dest="command", required=True)
@@ -28,6 +35,19 @@ def build_parser() -> argparse.ArgumentParser:
     normalize = commands.add_parser("normalize", help="Normalize audio volume.")
     normalize.add_argument("input", help="Input audio file.")
     normalize.add_argument("--output-dir", help="Output directory override.")
+
+    enhance = commands.add_parser("enhance", help="Reduce noise and normalize spoken audio.")
+    enhance.add_argument("input", help="Input audio or video file.")
+    enhance.add_argument("--output-dir", help="Output directory override.")
+
+    transcribe = commands.add_parser("transcribe", help="Create TXT transcripts or SRT subtitles.")
+    transcribe.add_argument("input", help="Input audio or video file.")
+    transcribe.add_argument("--format", choices=("txt", "srt"), default="srt")
+    transcribe.add_argument("--language", help="Optional language code such as en or fil.")
+    transcribe.add_argument("--model", help="faster-whisper model override.")
+    transcribe.add_argument("--device", choices=("auto", "cpu", "cuda"))
+    transcribe.add_argument("--compute-type", help="CTranslate2 compute type override.")
+    transcribe.add_argument("--output-dir", help="Output directory override.")
 
     trim = commands.add_parser("trim", help="Trim an audio file.")
     trim.add_argument("input", help="Input audio file.")
@@ -51,6 +71,19 @@ def run() -> int:
             output_path = convert_audio_file(args.input, config, args.output_dir)
         elif args.command == "normalize":
             output_path = normalize_audio_file(args.input, config, args.output_dir)
+        elif args.command == "enhance":
+            output_path = enhance_audio_file(args.input, config, args.output_dir)
+        elif args.command == "transcribe":
+            output_path = transcribe_audio_file(
+                args.input,
+                config,
+                output_format=args.format,
+                language=args.language,
+                model_name=args.model,
+                device=args.device,
+                compute_type=args.compute_type,
+                output_dir=args.output_dir,
+            )
         else:
             output_path = trim_audio_file(
                 args.input,

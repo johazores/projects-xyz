@@ -4,16 +4,11 @@
 projects-xyz/
 ├── README.md
 ├── LICENSE
-├── .gitignore
 ├── docs/
 │   ├── architecture.md
-│   ├── coding-standards.md
-│   ├── contributing.md
-│   ├── design-decisions.md
+│   ├── practical-toolkit-review.md
+│   ├── practical-workflows.md
 │   ├── development-guide.md
-│   ├── faq.md
-│   ├── folder-structure.md
-│   ├── review-report.md
 │   └── roadmap.md
 ├── media-process-api/
 ├── audio-process/
@@ -21,12 +16,12 @@ projects-xyz/
 └── video-process/
 ```
 
-Every media project follows this shape:
+Each media project keeps the same shallow shape:
 
 ```text
 <media>-process/
 ├── README.md
-├── requirements.txt
+├── requirements*.txt
 ├── config.json.example
 ├── config.py
 ├── main.py
@@ -38,7 +33,9 @@ Every media project follows this shape:
 └── docs/
 ```
 
-The API follows this intentionally small shape:
+`image-process/presets.json` is a deliberate project-specific data file.
+
+The API remains small:
 
 ```text
 media-process-api/
@@ -52,8 +49,5 @@ media-process-api/
 ├── outputs/
 ├── docs/
 ├── requirements.txt
-├── .env.example
 └── README.md
 ```
-
-The folders remain shallow. Add deeper folders only when a project becomes difficult to navigate without them.

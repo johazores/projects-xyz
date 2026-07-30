@@ -2,70 +2,51 @@
 
 ## `ModuleNotFoundError: No module named app`
 
-Run the server from `media-process-api`:
+Run from `media-process-api`:
 
 ```bash
-cd media-process-api
 uvicorn app.main:app --reload
 ```
 
-## The API says a media CLI is missing
+## Optional operation dependencies are missing
 
-Keep these folders beside each other at the repository root:
-
-```text
-audio-process/
-image-process/
-video-process/
-media-process-api/
-```
-
-## Unknown provider
-
-Check:
+Install them in the API virtual environment because media CLIs are launched with the same Python interpreter:
 
 ```bash
-curl http://127.0.0.1:8000/providers
+python -m pip install -r ../audio-process/requirements-transcription.txt
+python -m pip install -r ../image-process/requirements-background.txt
 ```
 
-Then test the provider directly through the corresponding CLI. The provider must be registered in that media project's `providers/__init__.py`.
+## FFmpeg operations fail
 
-## Bark dependencies are missing
+Confirm `ffmpeg -version` works in the terminal that starts the API.
 
-Install the optional audio dependencies from `audio-process/requirements-ai.txt` and install a compatible PyTorch build for the machine.
+## A local input file is not found
 
-The API base requirements intentionally do not install large model libraries.
+Use an absolute path. On Windows, JSON accepts forward slashes:
+
+```json
+{"input_path":"C:/media/video.mp4"}
+```
 
 ## A request times out
 
-Increase the local timeout in `.env`:
+Increase:
 
 ```text
-MEDIA_API_PROCESS_TIMEOUT=1800
+MEDIA_API_PROCESS_TIMEOUT=7200
 ```
 
-Restart the server after changing `.env`.
+Restart the API after changing `.env`.
 
-## Output path is unexpected
+## Output folders are unexpected
 
-By default, outputs are stored in:
-
-```text
-media-process-api/outputs/audio/
-media-process-api/outputs/image/
-media-process-api/outputs/video/
-```
-
-Set an absolute `MEDIA_API_OUTPUT_DIR` when starting the server from an unusual working directory.
+Requests with `project` are stored under `outputs/<project>/<media-type>/`. Project names are converted to lowercase safe folder names.
 
 ## The output URL does not open
 
-Use the same host and port as the API, followed by the returned `output_url`:
+Prefix the returned `output_url` with the server host:
 
 ```text
-http://127.0.0.1:8000/outputs/image/example.svg
+http://127.0.0.1:8000/outputs/episode-12/audio/video-transcript.srt
 ```
-
-## GPU is not used
-
-The API does not choose CPU or GPU. Device selection belongs to the provider configuration in the relevant media project. The demo providers are CPU-only and intentionally lightweight.

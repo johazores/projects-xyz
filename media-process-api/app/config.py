@@ -22,7 +22,7 @@ class Settings:
     host: str = os.getenv("MEDIA_API_HOST", "127.0.0.1")
     port: int = int(os.getenv("MEDIA_API_PORT", "8000"))
     log_level: str = os.getenv("MEDIA_API_LOG_LEVEL", "INFO")
-    process_timeout_seconds: int = int(os.getenv("MEDIA_API_PROCESS_TIMEOUT", "600"))
+    process_timeout_seconds: int = int(os.getenv("MEDIA_API_PROCESS_TIMEOUT", "3600"))
     output_dir: Path = Path(
         os.getenv("MEDIA_API_OUTPUT_DIR", str(PROJECT_DIR / "outputs"))
     ).resolve()
@@ -45,4 +45,10 @@ PROVIDER_CATALOG = {
     "video": {
         "demo": ["request-manifest"],
     },
+}
+
+CAPABILITY_CATALOG = {
+    "audio": ["generate", "convert", "normalize", "enhance", "transcribe", "trim"],
+    "image": ["generate", "generate-batch", "remove-background", "presets"],
+    "video": ["generate", "resize", "frames"],
 }

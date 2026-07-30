@@ -1,71 +1,61 @@
 # Development Guide
 
-## Requirements
+## Recommended environment
 
-- Python 3.10 or newer
-- FFmpeg only for audio conversion, normalization, and trimming
-- Optional provider-specific dependencies when using a real model
+Use Python 3.11 for the full practical toolkit and install FFmpeg.
 
-## Local setup
-
-Each media project is independent:
+Base projects keep optional dependencies separate:
 
 ```bash
-cd audio-process
-python -m venv .venv
+python -m pip install -r audio-process/requirements-transcription.txt
+python -m pip install -r image-process/requirements-background.txt
 ```
 
-Activate the environment, then install the project requirements:
+Install only the features being used.
 
-```bash
-python -m pip install -r requirements.txt
-```
+## Adding a generation provider
 
-The base demo providers use only the standard library, so installation is normally immediate.
+1. Add one file under the relevant `providers/` folder.
+2. Implement the existing protocol.
+3. Register it in `providers/__init__.py`.
+4. Add only its required dependency.
+5. Test through the media CLI.
+6. Add model metadata to the API catalog.
 
-For the unified local API:
+## Adding a practical operation
 
-```bash
-cd media-process-api
-python -m venv .venv
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+1. Prefer a focused utility function.
+2. Add orchestration in the media project's `main.py`.
+3. Add one CLI command.
+4. Add an API service and route only when HTTP access is useful.
+5. Update examples and troubleshooting.
 
-## Configuration workflow
-
-1. Copy `config.json.example` to `config.json`.
-2. Change normal settings in `config.json`.
-3. Store provider secrets in environment variables.
-4. Run the CLI with `--config config.json`, or set the documented config-path environment variable.
-
-## Adding a provider
-
-1. Create one file in the project's `providers/` directory.
-2. Implement the method described by `providers/base.py`.
-3. Register the provider in `providers/__init__.py`.
-4. Add only the dependency required by that provider.
-5. Document its settings, environment variables, and limitations.
-6. Test failure cases as well as a successful generation.
+Do not create a provider class for a fixed operation such as resizing or transcription unless multiple interchangeable implementations actually exist.
 
 ## Validation
-
-Before committing:
 
 ```bash
 python -m compileall audio-process image-process video-process media-process-api/app
 python audio-process/cli.py --help
 python image-process/cli.py --help
 python video-process/cli.py --help
-cd media-process-api && python -m app
 ```
 
-Run each demo provider once, then call the three API generation endpoints and confirm outputs are created in the expected folders.
+Also test:
+
+- one audio enhancement
+- one TXT or SRT transcription
+- one image preset batch
+- one background removal
+- one video resize
+- one frame extraction
+- the corresponding API routes
 
 ## Git workflow
 
-- Use `feat/<feature-name>` branches.
-- Use Conventional Commit messages.
-- Keep commits focused.
-- Do not add GitHub Actions during the active foundation phase.
-- Do not add generated attribution, co-author trailers, or tool signatures.
+- branch: `feat/<feature-name>`
+- focused Conventional Commits
+- create a pull request
+- merge directly into `master`
+- no GitHub Actions during rapid development
+- no co-author or generated attribution

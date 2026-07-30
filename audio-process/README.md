@@ -1,130 +1,105 @@
 # Audio Process
 
-The reference implementation for the AI Media Processing Toolkit.
+Local audio generation, cleanup, conversion, transcription, and subtitle tools.
 
-It provides a dependency-free demo generator, an optional Bark provider, and FFmpeg commands for conversion, normalization, and trimming.
+## Capabilities
 
-## Architecture
-
-```text
-cli.py -> config.py -> main.py -> providers/
-                         |
-                         -> utils/ffmpeg.py
-                         -> utils/files.py
-                         -> utils/retry.py
-```
-
-See [docs/architecture.md](docs/architecture.md) for details.
+- dependency-free demo tone generation
+- optional Bark text-to-audio generation
+- MP3 conversion
+- loudness normalization
+- spoken-audio enhancement
+- trimming
+- local faster-whisper transcription
+- TXT transcripts and SRT subtitles
 
 ## Requirements
 
-- Python 3.10 or newer
-- FFmpeg for `convert`, `normalize`, and `trim`
-- Optional Bark dependencies for real text-to-audio generation
+- Python 3.10 or newer; Python 3.11 is recommended for the full toolkit
+- FFmpeg for conversion, normalization, enhancement, and trimming
+- optional dependencies only for Bark or transcription
 
 ## Installation
 
 ```bash
 cd audio-process
 python -m venv .venv
-```
-
-Activate the environment, then install the base requirements:
-
-```bash
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-For Bark:
+Install only the optional feature you need:
 
 ```bash
 python -m pip install -r requirements-ai.txt
+python -m pip install -r requirements-transcription.txt
 ```
 
-Install a compatible PyTorch build separately for your operating system and GPU.
-
 ## Configuration
-
-Copy the example:
 
 ```bash
 cp config.json.example config.json
 ```
 
-Windows PowerShell:
+Important transcription settings:
 
-```powershell
-Copy-Item config.json.example config.json
-```
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `transcription_model` | `small` | faster-whisper model name |
+| `transcription_device` | `auto` | `auto`, `cpu`, or `cuda` |
+| `transcription_compute_type` | `default` | CTranslate2 compute type |
+| `transcription_language` | `null` | Optional language code |
 
-Normal settings are stored in `config.json`. The built-in defaults work without a file.
+Environment variables remain limited to `AUDIO_PROCESS_CONFIG` and secrets.
 
-### Environment variables
+## CLI examples
 
-| Variable | Purpose |
-| --- | --- |
-| `AUDIO_PROCESS_CONFIG` | Optional path to the JSON configuration file |
-| `AUDIO_API_KEY` | Reserved for provider secrets |
-
-Non-secret runtime settings should remain in the JSON configuration.
-
-## CLI usage
-
-Generate a local demo WAV:
+Generate audio:
 
 ```bash
 python cli.py generate --prompt "A calm notification tone"
+python cli.py generate --provider bark --prompt "Welcome to the channel"
 ```
 
-Use Bark:
+Clean spoken audio:
 
 ```bash
-python cli.py generate --provider bark --prompt "Welcome to the media toolkit"
+python cli.py enhance narration.wav
 ```
 
-Convert to MP3:
+The enhancement chain applies a voice-focused high-pass, low-pass, noise reduction, and loudness normalization. Keep the original recording and compare results.
+
+Create subtitles:
 
 ```bash
-python cli.py convert path/to/input.wav
+python cli.py transcribe video.mp4 --format srt --model small
 ```
 
-Normalize audio:
+Create a transcript:
 
 ```bash
-python cli.py normalize path/to/input.wav
+python cli.py transcribe podcast.wav --format txt --language en
 ```
 
-Trim audio:
+Other utilities:
 
 ```bash
-python cli.py trim path/to/input.wav --start 2 --duration 5
+python cli.py convert input.wav
+python cli.py normalize input.wav
+python cli.py trim input.wav --start 2 --duration 5
 ```
 
-Use a custom configuration file:
+Every successful command prints the final absolute output path.
 
-```bash
-python cli.py --config config.json generate --prompt "Soft rain ambience"
-```
+## Output
 
-## Examples
-
-- [Sample prompts](examples/prompts.txt)
-- [Example output metadata](examples/example-output.json)
-
-Generated files are written to `outputs/` and ignored by Git.
-
-## Logging, progress, and retries
-
-The CLI logs the selected operation and final path. Provider generation is retried according to `max_retries` and `retry_delay_seconds`. Validation and FFmpeg failures return a readable error and a non-zero exit code.
+Files are stored in `outputs/` by default. Use `--output-dir` to organize files by video or game project.
 
 ## Troubleshooting
 
+- Confirm `ffmpeg -version` works before using processing commands.
+- Install `requirements-transcription.txt` in the same environment used to run the CLI or API.
+- Start with the `small` model. Use a smaller model when CPU speed or memory is limited.
+- For CUDA errors, try `--device cpu` first to confirm the workflow.
+
 See [docs/troubleshooting.md](docs/troubleshooting.md).
-
-## Future improvements
-
-- Add tested cloud audio providers
-- Add prompt-file batch generation
-- Save generation metadata beside each output
-- Add optional seed and voice controls
-- Reuse loaded local models during batch sessions

@@ -5,6 +5,10 @@
   "sample_rate": 24000,
   "duration_seconds": 3.0,
   "device": "auto",
+  "transcription_model": "small",
+  "transcription_device": "auto",
+  "transcription_compute_type": "default",
+  "transcription_language": null,
   "max_retries": 2,
   "retry_delay_seconds": 1.0,
   "log_level": "INFO"

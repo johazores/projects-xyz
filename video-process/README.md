@@ -1,82 +1,74 @@
 # Video Process
 
-A minimal foundation for AI video generation workflows.
+A minimal video generation foundation plus practical FFmpeg utilities.
 
-The built-in `demo` provider writes a structured generation request manifest instead of pretending to create an AI video. Real video services commonly require asynchronous submission, polling, and download steps; those details will be added with the first tested provider.
+## Capabilities
 
-## Architecture
-
-```text
-cli.py -> config.py -> main.py -> providers/
-                         |
-                         -> utils/
-```
-
-See [docs/architecture.md](docs/architecture.md).
+- provider-based video generation requests
+- aspect-safe resizing and padding
+- common output presets
+- frame extraction
+- JSON frame manifests
 
 ## Requirements
 
 - Python 3.10 or newer
-- No dependencies for the demo provider
-- Provider-specific SDKs only when a real provider is added
+- FFmpeg for resizing and frame extraction
+- provider-specific dependencies only when a real generation provider is added
 
 ## Installation
 
 ```bash
 cd video-process
 python -m venv .venv
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+ffmpeg -version
 ```
 
-## Configuration
+## Resize presets
 
-Copy `config.json.example` to `config.json` and manage normal settings there.
+| Preset | Resolution | Typical use |
+| --- | --- | --- |
+| `youtube` | 1920×1080 | landscape video |
+| `shorts` | 1080×1920 | vertical short-form video |
+| `square` | 1080×1080 | square social asset |
+| `720p` | 1280×720 | smaller preview or prototype |
 
-### Environment variables
+The input is scaled to fit and padded instead of stretched.
 
-| Variable | Purpose |
-| --- | --- |
-| `VIDEO_PROCESS_CONFIG` | Optional path to the JSON configuration file |
-| `VIDEO_API_KEY` | Secret used by a future provider |
-
-## CLI usage
+## CLI examples
 
 ```bash
-python cli.py generate --prompt "A slow camera move through a neon city"
+python cli.py resize clip.mp4 --preset youtube
+python cli.py resize highlight.mp4 --preset shorts
+python cli.py frames gameplay.mp4 --fps 1
 ```
 
-Use a different output folder:
+Frame extraction creates:
+
+```text
+outputs/gameplay-frames/frame-000001.png
+outputs/gameplay-frames/frame-000002.png
+outputs/gameplay-frames.json
+```
+
+The manifest records the source, frame rate, folder, frame count, and filenames.
+
+The generation command remains available for provider development:
 
 ```bash
-python cli.py generate \
-  --prompt "Ocean waves at sunrise, cinematic wide shot" \
-  --output-dir generated
+python cli.py generate --prompt "A slow camera move through a forest village"
 ```
 
-The demo provider creates a JSON request artifact in `outputs/`.
+## Future provider direction
 
-## Examples
-
-- [Sample prompts](examples/prompts.txt)
-- [Example request artifact](examples/example-video-request.json)
-
-## Logging, errors, and retries
-
-The CLI reports submission progress and the saved artifact. Retry behavior is controlled through JSON configuration. Provider and configuration errors return a non-zero exit code.
+Add a real provider only when its submission, polling, download, and error behavior can be tested. Keep asynchronous logic inside that provider rather than adding a repository-wide job system prematurely.
 
 ## Troubleshooting
 
+- Confirm `ffmpeg -version` works.
+- Use the `720p` preset for faster prototypes.
+- Frame extraction can create many files; start with `--fps 0.5` or `--fps 1`.
+
 See [docs/troubleshooting.md](docs/troubleshooting.md).
-
-## Future providers
-
-The provider layer can later support OpenAI video generation, Runway, Pika, Luma, Kling, Veo, and future providers. Each integration should own its submission, polling, status mapping, and download logic.
-
-## Future improvements
-
-- Add the first tested video provider
-- Add asynchronous job polling
-- Add timeout and cancellation handling
-- Save provider job IDs and generation metadata
-- Add image-to-video inputs where supported
-- Add webhook support only if the toolkit becomes a hosted service

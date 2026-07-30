@@ -1,2 +1,3 @@
-# The demo provider and CLI use only the Python standard library.
-# Install requirements-ai.txt only when using the optional Bark provider.
+# Base audio generation and FFmpeg utilities use only the Python standard library.
+# Install requirements-ai.txt for Bark.
+# Install requirements-transcription.txt for faster-whisper transcription.

@@ -1,9 +1,5 @@
 # Architecture
 
-## Goal
-
-Provide one local HTTP entry point without merging the three media projects into one large package.
-
 ## Request flow
 
 ```mermaid
@@ -11,67 +7,57 @@ sequenceDiagram
     participant Client
     participant API as FastAPI route
     participant Service
-    participant CLI as Existing media CLI
-    participant Provider
-    participant Disk as Local outputs
+    participant CLI as Media CLI
+    participant Operation as Provider or utility
+    participant Disk as Project output
 
-    Client->>API: POST /image/generate
-    API->>API: Validate JSON with Pydantic
-    API->>Service: Pass typed request
-    Service->>CLI: Run python cli.py generate
-    CLI->>Provider: Generate artifact
-    Provider->>Disk: Save file
-    CLI-->>Service: Print absolute output path
+    Client->>API: POST request
+    API->>API: Pydantic validation
+    API->>Service: Typed request
+    Service->>CLI: Run one command
+    CLI->>Operation: Generate or process media
+    Operation->>Disk: Save result
+    CLI-->>Service: Print absolute result path
     Service-->>API: Build common metadata
-    API-->>Client: Return path and output URL
+    API-->>Client: Path and local URL
 ```
 
 ## Responsibilities
 
-### FastAPI application
+### API
 
-- exposes routes
-- validates requests
-- serves generated files
-- returns consistent errors
-- lists known providers and models
+- validate JSON
+- expose discoverable endpoints
+- translate failures into readable responses
+- serve local outputs
 
-### Media services
+### Services
 
-- translate API fields into CLI arguments
-- select the correct output subdirectory
-- build the common response
+- build CLI arguments
+- choose project-organized output folders
+- convert output paths into API responses
 
-### Existing media projects
+### Media projects
 
-- load provider configuration
-- select providers
-- retry provider operations
-- name output files
-- generate or process media
+- own generation providers
+- own FFmpeg, transcription, prompt, and background-removal logic
+- validate input files
+- write final artifacts
+
+## Why local paths instead of uploads
+
+The server is designed for one developer on one machine. Local paths avoid multipart dependencies and unnecessary file copies. This also makes large video workflows faster.
+
+Do not expose the API publicly without adding authentication and path restrictions.
 
 ## Why subprocesses
 
-The current media folders use independent top-level imports and hyphenated directory names. Importing all three directly into one Python process would require a broader package refactor and could cause module-name collisions such as `config`, `providers`, and `utils`.
+The media projects use independent top-level modules and optional dependencies. Subprocesses preserve that structure and isolate model failures. Move a selected provider in-process only when model reload time becomes a measured issue.
 
-Subprocess execution is the smallest reliable boundary for the current repository. It also allows each media project to install optional provider dependencies independently.
+## Output organization
 
-## Current tradeoffs
+```text
+outputs/<project>/<media-type>/<artifact>
+```
 
-- A local model is loaded again for each request.
-- Progress is visible in provider logs rather than streamed to the caller.
-- Provider metadata is listed explicitly in `app/config.py`.
-- Video generation remains a request manifest until a real video provider is added.
-
-These tradeoffs are acceptable for a development foundation. They should change only when real usage demonstrates a need.
-
-## Future migration path
-
-When repeated model loading becomes a measured bottleneck:
-
-1. Convert one media project into an importable package using relative imports.
-2. Keep its public orchestration function stable.
-3. Replace only that service's subprocess call with an in-process call.
-4. Keep the route and response model unchanged.
-
-This allows gradual optimization without redesigning the API.
+Without a project value, outputs remain under `outputs/<media-type>/`.

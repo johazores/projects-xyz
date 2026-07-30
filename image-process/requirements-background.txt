@@ -1,0 +1,2 @@
+# Optional local background removal. Requires Python 3.11 to 3.13.
+rembg[cpu]==2.0.76

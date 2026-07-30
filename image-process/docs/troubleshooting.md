@@ -1,17 +1,33 @@
 # Image Troubleshooting
 
-## The SVG does not open
+## Background removal dependencies are missing
 
-Use a modern browser or image editor with SVG support.
+Use Python 3.11 to 3.13, then install:
 
-## The config file fails to load
+```bash
+python -m pip install -r requirements-background.txt
+```
 
-Confirm the file is valid JSON and uses only keys from `config.json.example`.
+## The first background removal is slow
 
-## A negative prompt appears to do nothing
+rembg downloads the selected model on first use. Later runs reuse the cached model file.
 
-The demo provider only displays the negative prompt. Real providers may ignore it when their API does not support the feature.
+## A preset is unknown
+
+```bash
+python cli.py presets
+```
+
+Preset names and templates are stored in `presets.json`.
+
+## A batch creates no files
+
+Confirm the prompt file contains non-empty lines. Lines beginning with `#` are treated as comments.
+
+## Negative prompts appear to do nothing
+
+Support depends on the selected generation provider. The demo provider only displays the prepared prompt information.
 
 ## A provider is unknown
 
-Only `demo` is included initially. Register additional providers in `providers/__init__.py` after implementing them.
+Register it in `providers/__init__.py` and test the provider directly through the CLI.

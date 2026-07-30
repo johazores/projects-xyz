@@ -1,86 +1,92 @@
 # Image Process
 
-A small text-to-image foundation with a consistent CLI, configuration, provider boundary, logging, retry support, and output management.
+A simple image generation and asset-preparation toolkit.
 
-The built-in `demo` provider creates an SVG prompt card. It is not an AI model; it exists so the complete workflow runs immediately without credentials. Tested AI providers can be added behind the same interface.
+## Capabilities
 
-## Architecture
+- provider-based text-to-image generation
+- negative prompts
+- reusable prompt presets
+- prompt-file batch generation
+- local background removal with rembg
+- organized output folders
 
-```text
-cli.py -> config.py -> main.py -> providers/
-                         |
-                         -> utils/
-```
-
-See [docs/architecture.md](docs/architecture.md).
-
-## Requirements
-
-- Python 3.10 or newer
-- No dependencies for the demo provider
-- Provider-specific SDKs only when a real provider is added
+The built-in demo provider still exists for testing the pipeline. Practical image generation should be added through a tested local provider such as ComfyUI or Diffusers.
 
 ## Installation
 
 ```bash
 cd image-process
 python -m venv .venv
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-## Configuration
-
-Copy `config.json.example` to `config.json` and change normal settings there.
-
-### Environment variables
-
-| Variable | Purpose |
-| --- | --- |
-| `IMAGE_PROCESS_CONFIG` | Optional path to the JSON configuration file |
-| `IMAGE_API_KEY` | Secret used by a future provider |
-
-## CLI usage
+For background removal, use Python 3.11 to 3.13 and install:
 
 ```bash
-python cli.py generate --prompt "A floating island above soft clouds"
+python -m pip install -r requirements-background.txt
 ```
 
-With a negative prompt:
+## Prompt presets
+
+List presets:
+
+```bash
+python cli.py presets
+python cli.py presets --json
+```
+
+Included presets:
+
+- `youtube-thumbnail`
+- `game-character`
+- `pixel-art`
+- `item-icon`
+- `environment-concept`
+
+Presets are stored in `presets.json` and use `{prompt}` as the insertion point.
+
+## CLI examples
+
+Generate one image with a preset:
 
 ```bash
 python cli.py generate \
-  --prompt "A clean futuristic workspace" \
-  --negative-prompt "clutter, unreadable text"
+  --prompt "a forest guardian with an ancient wooden mask" \
+  --preset game-character
 ```
 
-Use a custom output folder:
+Generate a batch from a text file:
 
 ```bash
-python cli.py generate --prompt "Minimal mountain poster" --output-dir generated
+python cli.py batch examples/game-assets.txt --preset pixel-art
 ```
 
-## Examples
+Blank lines and lines beginning with `#` are ignored.
 
-- [Sample prompts](examples/prompts.txt)
-- [Example SVG image](examples/example-image.svg)
-- [Example output metadata](examples/example-output.json)
+Remove a background:
 
-## Logging, errors, and retries
+```bash
+python cli.py remove-background character.png
+python cli.py remove-background character.png --model isnet-general-use
+```
 
-The CLI reports progress and the saved output path. Provider failures use the retry settings in the JSON configuration. Invalid settings and unknown providers return a readable error.
+Every generated path is printed to standard output.
+
+## Adding a real image provider
+
+1. Add one provider module under `providers/`.
+2. Implement the existing `generate` contract.
+3. Register the provider in `providers/__init__.py`.
+4. Test it through the CLI before exposing it through the API.
+
+For local workflows, prefer a thin ComfyUI API adapter or a focused Diffusers provider rather than rebuilding a model manager.
 
 ## Troubleshooting
 
+- rembg downloads its selected model on first use.
+- CPU background removal can be slow on large images.
+- Keep prompt batches small until the selected generation provider is tested for memory use.
+
 See [docs/troubleshooting.md](docs/troubleshooting.md).
-
-## Future providers
-
-The provider boundary can support services such as OpenAI, Stability AI, Replicate, Hugging Face, local Stable Diffusion, ComfyUI, and future providers. Add integrations only when they can be tested and documented clearly.
-
-## Future improvements
-
-- Add the first tested AI image provider
-- Add provider-specific size and quality options
-- Save prompt metadata beside each image
-- Add batch prompt files
-- Add seed support where available

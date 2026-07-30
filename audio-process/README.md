@@ -1,262 +1,130 @@
-# Python AI Audio Studio
+# Audio Process
 
-A clean beginner-friendly Python backend for:
+The reference implementation for the AI Media Processing Toolkit.
 
-- Uploading audio
-- Converting audio to MP3
-- Normalizing audio volume
-- Trimming audio
-- Generating basic AI audio from text using `suno/bark-small`
+It provides a dependency-free demo generator, an optional Bark provider, and FFmpeg commands for conversion, normalization, and trimming.
 
-This is not yet a Suno-level music generator. It is a clean foundation for learning audio processing and AI audio generation using Python.
+## Architecture
 
----
-
-## Project structure
-
-```txt
-audio-process/
-  app/
-    api/
-      audio_routes.py
-    core/
-      config.py
-      errors.py
-    services/
-      audio_generation_service.py
-      ffmpeg_service.py
-    utils/
-      files.py
-    main.py
-  uploads/
-  processed/
-  main.py
-  requirements.txt
-  .env.example
-  README.md
+```text
+cli.py -> config.py -> main.py -> providers/
+                         |
+                         -> utils/ffmpeg.py
+                         -> utils/files.py
+                         -> utils/retry.py
 ```
 
----
+See [docs/architecture.md](docs/architecture.md) for details.
 
-## 1. Install Python on Windows using CLI
+## Requirements
 
-Open PowerShell and run:
+- Python 3.10 or newer
+- FFmpeg for `convert`, `normalize`, and `trim`
+- Optional Bark dependencies for real text-to-audio generation
+
+## Installation
+
+```bash
+cd audio-process
+python -m venv .venv
+```
+
+Activate the environment, then install the base requirements:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+For Bark:
+
+```bash
+python -m pip install -r requirements-ai.txt
+```
+
+Install a compatible PyTorch build separately for your operating system and GPU.
+
+## Configuration
+
+Copy the example:
+
+```bash
+cp config.json.example config.json
+```
+
+Windows PowerShell:
 
 ```powershell
-winget install Python.Python.3.12
+Copy-Item config.json.example config.json
 ```
 
-Close PowerShell, then open it again.
+Normal settings are stored in `config.json`. The built-in defaults work without a file.
 
-Check Python:
+### Environment variables
 
-```powershell
-py --version
-pip --version
-```
+| Variable | Purpose |
+| --- | --- |
+| `AUDIO_PROCESS_CONFIG` | Optional path to the JSON configuration file |
+| `AUDIO_API_KEY` | Reserved for provider secrets |
 
----
+Non-secret runtime settings should remain in the JSON configuration.
 
-## 2. Install Python on Ubuntu
+## CLI usage
+
+Generate a local demo WAV:
 
 ```bash
-sudo apt update
-sudo apt install -y python3 python3-pip python3-venv
-python3 --version
-pip3 --version
+python cli.py generate --prompt "A calm notification tone"
 ```
 
----
-
-## 3. Install FFmpeg
-
-### Windows
-
-```powershell
-winget install Gyan.FFmpeg
-```
-
-Then close and reopen PowerShell.
-
-Check:
-
-```powershell
-ffmpeg -version
-```
-
-If `ffmpeg` is not recognized, add this folder to PATH:
-
-```txt
-C:\Users\YOUR_USERNAME\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1-full_build\bin
-```
-
-Do not add `ffmpeg.exe` itself. Add only the `bin` folder.
-
-### Ubuntu
+Use Bark:
 
 ```bash
-sudo apt update
-sudo apt install -y ffmpeg
-ffmpeg -version
+python cli.py generate --provider bark --prompt "Welcome to the media toolkit"
 ```
 
-### macOS
+Convert to MP3:
 
 ```bash
-brew install ffmpeg
-ffmpeg -version
+python cli.py convert path/to/input.wav
 ```
 
----
-
-## 4. Setup project
-
-### Windows PowerShell
-
-```powershell
-cd path\to\python-ai-audio-studio
-py -m venv .venv
-.\.venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install torch torchaudio
-copy .env.example .env
-```
-
-### Ubuntu / macOS
+Normalize audio:
 
 ```bash
-cd path/to/python-ai-audio-studio
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-pip install torch torchaudio
-cp .env.example .env
+python cli.py normalize path/to/input.wav
 ```
 
----
-
-## 5. Run the app
-
-### Windows
-
-```powershell
-uvicorn main:app --reload
-```
-
-### Ubuntu / macOS
+Trim audio:
 
 ```bash
-uvicorn main:app --reload
+python cli.py trim path/to/input.wav --start 2 --duration 5
 ```
 
-Open:
-
-```txt
-http://localhost:8000/docs
-```
-
----
-
-## 6. Available endpoints
-
-### Health check
-
-```txt
-GET /health
-```
-
-### Convert to MP3
-
-```txt
-POST /audio/convert-to-mp3
-```
-
-Upload an audio file.
-
-### Normalize audio
-
-```txt
-POST /audio/normalize
-```
-
-Upload an audio file.
-
-### Trim audio
-
-```txt
-POST /audio/trim
-```
-
-Form fields:
-
-```txt
-audio = file
-start = 0
-duration = 10
-```
-
-### Generate audio from text
-
-```txt
-POST /audio/generate
-```
-
-Body:
-
-```json
-{
-  "text": "Hello, this is my first generated audio using Python."
-}
-```
-
-The first generation will be slow because the model downloads first.
-
----
-
-## 7. RTX 4060 Ti GPU note
-
-Your RTX 4060 Ti can help with AI generation, but only if PyTorch detects CUDA.
-
-Check inside your virtual environment:
+Use a custom configuration file:
 
 ```bash
-python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU only')"
+python cli.py --config config.json generate --prompt "Soft rain ambience"
 ```
 
-If it says `False`, install the CUDA PyTorch build from the official PyTorch selector.
+## Examples
 
-Common CUDA install command:
+- [Sample prompts](examples/prompts.txt)
+- [Example output metadata](examples/example-output.json)
 
-```bash
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
-```
+Generated files are written to `outputs/` and ignored by Git.
 
-Then test again:
+## Logging, progress, and retries
 
-```bash
-python -c "import torch; print(torch.cuda.is_available())"
-```
+The CLI logs the selected operation and final path. Provider generation is retried according to `max_retries` and `retry_delay_seconds`. Validation and FFmpeg failures return a readable error and a non-zero exit code.
 
----
+## Troubleshooting
 
-## 8. Important notes
+See [docs/troubleshooting.md](docs/troubleshooting.md).
 
-- FFmpeg is required for upload processing endpoints.
-- AI generation endpoint uses `suno/bark-small`.
-- First AI request downloads the model and can take time.
-- CPU generation works but can be slow.
-- GPU generation is better but requires CUDA-enabled PyTorch.
-- Generated and processed files are saved inside `processed/`.
+## Future improvements
 
----
-
-## 9. Recommended learning path
-
-1. Make `/audio/convert-to-mp3` work.
-2. Make `/audio/normalize` work.
-3. Make `/audio/trim` work.
-4. Try `/audio/generate` on CPU.
-5. Enable CUDA for your RTX 4060 Ti.
-6. Later add MusicGen for actual music generation.
+- Add tested cloud audio providers
+- Add prompt-file batch generation
+- Save generation metadata beside each output
+- Add optional seed and voice controls
+- Reuse loaded local models during batch sessions

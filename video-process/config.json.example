@@ -1,0 +1,10 @@
+{
+  "provider": "demo",
+  "model": "default",
+  "output_dir": "outputs",
+  "duration_seconds": 5,
+  "aspect_ratio": "16:9",
+  "max_retries": 2,
+  "retry_delay_seconds": 1.0,
+  "log_level": "INFO"
+}

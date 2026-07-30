@@ -1,0 +1,22 @@
+name: Feature request
+description: Propose a focused local media workflow improvement
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow to improve
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and local-first considerations

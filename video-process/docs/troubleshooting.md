@@ -1,17 +1,27 @@
 # Video Troubleshooting
 
-## No video file is created
+## FFmpeg is not found
 
-The initial demo provider creates a JSON generation request artifact. This is expected.
+```bash
+ffmpeg -version
+```
 
-## The config file fails to load
+## Resize is slow
 
-Confirm the file is valid JSON and uses only keys from `config.json.example`.
+Use `--preset 720p` for prototypes. Encoding time increases with resolution and source duration.
 
-## A provider is unknown
+## The resized video has borders
 
-Only `demo` is included initially. Implement and register a real provider before selecting another name.
+This is expected when source and target aspect ratios differ. Padding preserves the full image instead of stretching or cropping it.
 
-## A future provider stays pending
+## Too many frames are created
 
-Provider implementations should include a documented timeout and clear status logging. Polling should use the shared retry pattern only when the provider's API behavior makes retries safe.
+Use a smaller rate:
+
+```bash
+python cli.py frames input.mp4 --fps 0.5
+```
+
+## No AI video is created
+
+The current generation provider writes an honest request manifest. Add a tested provider before expecting a rendered video.

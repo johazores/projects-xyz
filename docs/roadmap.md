@@ -2,46 +2,39 @@
 
 ## Foundation — complete
 
-- [x] Review the original repository
-- [x] Establish a consistent project structure
-- [x] Convert audio processing to a CLI-first reference project
-- [x] Add image processing foundation
-- [x] Add video processing foundation
-- [x] Add demo providers and example prompts
-- [x] Add repository and project documentation
-- [x] Add output management, logging, retries, and graceful errors
-- [x] Add a lightweight FastAPI entry point for all media projects
-- [x] Add provider and model discovery endpoints
-- [x] Add unified API examples and documentation
+- [x] Review and simplify the original repository
+- [x] Establish consistent audio, image, and video projects
+- [x] Add CLI, configuration, providers, output management, logging, and retries
+- [x] Add a lightweight FastAPI entry point
+- [x] Add provider and model discovery
 
-## Provider expansion
+## Practical local workflows — complete
 
-- [ ] Add one tested text-to-image provider
-- [ ] Add one tested text-to-video provider
-- [ ] Add additional audio generation providers
-- [ ] Add local model examples
-- [ ] Document provider capabilities and limitations
+- [x] Add faster-whisper transcription
+- [x] Add TXT transcripts and SRT subtitles
+- [x] Add spoken-audio enhancement
+- [x] Add image prompt presets
+- [x] Add image prompt-file batching
+- [x] Add local background removal
+- [x] Add video resize presets
+- [x] Add frame extraction and manifests
+- [x] Add project-based API output grouping
+- [x] Add API capability discovery
 
-## API evolution
+## Next useful integrations
 
-- [ ] Add a real local image provider and expose its model metadata
-- [ ] Add a real local video provider and job polling only when required
-- [ ] Add optional API fields only when provider capabilities require them
-- [ ] Move selected providers in-process when model reload time becomes a measured bottleneck
-- [ ] Add lightweight API tests during stabilization
+- [ ] Add a tested Piper voice provider for narration and game voice lines
+- [ ] Add a tested ComfyUI image provider using saved workflow JSON
+- [ ] Add image-to-image through ComfyUI or Diffusers
+- [ ] Add local image upscaling through a tested provider
+- [ ] Add audio prompt batches for NPC lines and sound effects
+- [ ] Add generation metadata sidecars
+- [ ] Add reusable rembg sessions for large folder batches
 
-## Workflow improvements
+## Later, only when needed
 
-- [ ] Add batch prompt files
-- [ ] Add generation metadata beside outputs
-- [ ] Add optional seed support where providers support it
-- [ ] Add cancellation and polling helpers for asynchronous providers
-- [ ] Add lightweight tests for provider contracts and configuration
-
-## Later stabilization
-
-- [ ] Select supported Python versions
-- [ ] Add formatting and static analysis configuration
-- [ ] Add selective GitHub Actions only after workflows stabilize
-- [ ] Review whether repeated utilities justify a small shared package
-- [ ] Add release tags and changelog conventions
+- [ ] Add asynchronous polling for a real video provider
+- [ ] Reuse selected local models in-process when startup time becomes a measured problem
+- [ ] Add a small local web interface after the API stabilizes
+- [ ] Add an asset index only if folders become difficult to manage
+- [ ] Add selective GitHub Actions only during stabilization

@@ -2,80 +2,57 @@
 
 ## Repository model
 
-The toolkit contains three independent media projects and one optional local API.
-
 ```mermaid
 flowchart LR
-    Client[CLI user or local client] --> API[media-process-api]
-    Client --> Audio[audio-process]
-    Client --> Image[image-process]
-    Client --> Video[video-process]
+    User[Developer] --> Audio[audio-process]
+    User --> Image[image-process]
+    User --> Video[video-process]
+    User --> API[media-process-api]
     API --> Audio
     API --> Image
     API --> Video
-    Audio --> Outputs[Local outputs]
-    Image --> Outputs
-    Video --> Outputs
+    Audio --> Disk[Local project outputs]
+    Image --> Disk
+    Video --> Disk
 ```
 
-Each media project can still be opened, understood, and run on its own:
+Each media project remains independently runnable:
 
 ```text
-CLI -> configuration -> orchestration -> provider -> output
-                         |
-                         -> media utilities
+CLI -> configuration -> orchestration
+                         ├── generation provider
+                         └── focused local utility
 ```
 
-The API adds a thin HTTP path:
+The API remains thin:
 
 ```text
-HTTP route -> service -> existing media CLI -> provider -> shared API outputs
+HTTP route -> service -> existing CLI -> local output
 ```
 
-## Shared media project pattern
+## Generation providers versus operations
 
-Each media project contains:
+Providers represent interchangeable generation backends such as Bark or a future ComfyUI workflow.
 
-- `cli.py`: parses terminal commands, prints the final output path, and reports errors
-- `config.py`: loads defaults and optional JSON configuration
-- `main.py`: coordinates providers, retries, logging, and output paths
-- `providers/`: contains the built-in demo provider and future integrations
-- `utils/`: contains focused local helpers
-- `examples/`: contains prompts and sample output metadata
-- `outputs/`: stores generated files and is ignored by Git
-- `docs/`: contains architecture and troubleshooting notes
+Concrete transformations such as FFmpeg resize, subtitle writing, and background removal remain focused utility functions. Turning every operation into a provider would add abstraction without value.
 
-## API pattern
+## Output model
 
-`media-process-api` contains:
+CLI users choose an output folder with `--output-dir`.
 
-- `app/main.py`: creates FastAPI, mounts outputs, and registers routes
-- `app/config.py`: loads minimal local server settings
-- `app/models.py`: defines the small shared request and response models
-- `app/routes/`: exposes one generation route per media type
-- `app/services/`: translates requests into existing CLI calls
-- `outputs/`: stores API-generated audio, image, and video artifacts
+API users may provide a project name:
 
-The API uses subprocesses because the existing projects have independent top-level module names and optional dependencies. This avoids a broad package refactor and keeps each project runnable on its own. See [the API architecture](../media-process-api/docs/architecture.md) for tradeoffs and the gradual in-process migration path.
-
-## Provider boundary
-
-A provider has one responsibility: accept a generation request and create an output. Neither the CLI nor the API route needs to know how the provider works.
-
-A new provider normally requires:
-
-1. one provider implementation
-2. one provider registry entry in the media project
-3. one metadata entry in the API provider catalog
-
-No endpoint change is needed when the provider uses the existing request fields.
-
-## Configuration
-
-Normal media settings belong in JSON files because they are visible, portable, and easy to review. Environment variables are limited to configuration paths, secrets, and minimal API bootstrapping values such as host, port, timeout, and output location.
-
-There is no database or Admin CMS in the current toolkit. Adding either would create unnecessary infrastructure for local development projects.
+```text
+media-process-api/outputs/<project>/audio/
+media-process-api/outputs/<project>/image/
+media-process-api/outputs/<project>/video/
+```
 
 ## Dependency strategy
 
-The demo providers use only the Python standard library. The API installs only FastAPI, Uvicorn, and dotenv support. Large model libraries and provider SDKs remain optional and belong to the media project that uses them.
+- base CLIs remain small
+- FFmpeg is the shared system media tool
+- faster-whisper is optional
+- rembg is optional
+- provider SDKs stay inside the project that needs them
+- the API does not install every model dependency by default

@@ -3,36 +3,96 @@
 ### Health
 GET {{baseUrl}}/health
 
+### Capabilities
+GET {{baseUrl}}/capabilities
+
 ### Providers
 GET {{baseUrl}}/providers
 
-### Models
-GET {{baseUrl}}/models
+### Image presets
+GET {{baseUrl}}/image/presets
 
-### Generate demo audio
+### Generate audio
 POST {{baseUrl}}/audio/generate
 Content-Type: application/json
 
 {
   "prompt": "A calm notification tone",
-  "provider": "demo"
+  "provider": "demo",
+  "project": "youtube-test"
 }
 
-### Generate demo image
+### Enhance narration
+POST {{baseUrl}}/audio/enhance
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/narration.wav",
+  "project": "episode-12"
+}
+
+### Generate SRT subtitles
+POST {{baseUrl}}/audio/transcribe
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/video.mp4",
+  "output_format": "srt",
+  "model": "small",
+  "project": "episode-12"
+}
+
+### Generate an image with a preset
 POST {{baseUrl}}/image/generate
 Content-Type: application/json
 
 {
-  "prompt": "A floating island above soft clouds",
-  "negative_prompt": "blurry text",
-  "provider": "demo"
+  "prompt": "a forest guardian with an ancient wooden mask",
+  "preset": "game-character",
+  "provider": "demo",
+  "project": "forest-game"
 }
 
-### Generate demo video request
-POST {{baseUrl}}/video/generate
+### Batch image prompts
+POST {{baseUrl}}/image/generate-batch
 Content-Type: application/json
 
 {
-  "prompt": "A slow camera move through a neon city",
-  "provider": "demo"
+  "prompts": [
+    "forest guardian portrait",
+    "healing potion icon"
+  ],
+  "preset": "pixel-art",
+  "provider": "demo",
+  "project": "forest-game"
+}
+
+### Remove image background
+POST {{baseUrl}}/image/remove-background
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/character.png",
+  "model": "u2net",
+  "project": "forest-game"
+}
+
+### Resize for vertical short
+POST {{baseUrl}}/video/resize
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/highlight.mp4",
+  "preset": "shorts",
+  "project": "episode-12"
+}
+
+### Extract frames
+POST {{baseUrl}}/video/frames
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/gameplay.mp4",
+  "fps": 1,
+  "project": "forest-game"
 }

@@ -1,17 +1,15 @@
 # Video Architecture
 
-`cli.py` accepts a prompt and optional provider or output overrides.
+```text
+CLI -> config -> main
+                  ├── generation provider
+                  └── FFmpeg utilities
+                       ├── resize and pad
+                       └── frame extraction
+```
 
-`config.py` stores duration, aspect ratio, model, retry behavior, and output settings.
+Resize presets are a small dictionary in `main.py`. A configuration framework is unnecessary for four stable local formats.
 
-`main.py` owns output naming and retries. A provider owns the provider-specific generation lifecycle.
+Frame extraction writes PNG files plus one JSON manifest. Returning the manifest keeps CLI and API output handling consistent without creating a special directory response type.
 
-The demo provider writes a request manifest. A real provider will normally:
-
-1. submit a generation request
-2. receive a job identifier
-3. poll until the job succeeds or fails
-4. download the generated media
-5. return the local file path
-
-Those steps should remain inside the provider so the CLI stays consistent.
+A real video generation provider should own submission, polling, timeout handling, download, and provider-specific errors.

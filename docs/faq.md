@@ -1,25 +1,29 @@
 # FAQ
 
+## Is the toolkit useful without additional generation providers?
+
+Yes. Transcription, subtitles, audio cleanup, background removal, video resizing, frame extraction, prompt presets, and batching are practical local operations.
+
 ## Are the demo providers real AI models?
 
-No. They create deterministic local outputs so the complete CLI, configuration, logging, retry, and output flow can be tested without credentials or model downloads.
+No. They remain lightweight smoke-test providers. Real generation should use tested providers added behind the existing contracts.
 
-## Why not include every provider now?
+## Why not build a model manager?
 
-Provider APIs, capabilities, and billing models change. Adding untested adapters would make the repository look complete while increasing maintenance risk. The foundation makes providers easy to add one at a time.
+ComfyUI, Diffusers, faster-whisper, rembg, and provider SDKs already manage their own models. The toolkit should integrate them with thin adapters instead of duplicating that complexity.
 
-## Why use JSON configuration instead of only environment variables?
+## Why use local file paths in the API?
 
-JSON is easier to read, review, copy, and version as an example. Environment variables remain useful for secrets and the config-file path.
+The server is for one developer on one machine. Local paths avoid uploads and copies of large files. The API should remain bound to localhost unless security is added.
 
-## Why is there no database or Admin CMS?
+## Why are batches sequential?
 
-These projects are local command-line tools. A database and CMS would add infrastructure without solving a current requirement. They can be considered later if the toolkit becomes a hosted application.
+Different models have different memory and rate-limit behavior. Sequential execution is predictable and easy to debug. Parallelism can be added for a specific provider after measurement.
 
-## Why are the projects separate?
+## Why is there no database?
 
-A developer can learn or use one media type without installing dependencies for the others.
+Project folders are enough for the current personal workflow. An asset database should be added only when files become difficult to find or annotate.
 
 ## Why is there no CI?
 
-The repository is still in active foundation development. Local smoke checks are enough until commands, providers, and supported Python versions stabilize.
+The repository is in rapid active development. Selective CI can be introduced after commands, supported Python versions, and provider dependencies stabilize.

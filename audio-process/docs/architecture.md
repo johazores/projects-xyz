@@ -1,9 +1,23 @@
 # Audio Architecture
 
-`cli.py` parses four commands: `generate`, `convert`, `normalize`, and `trim`.
+`cli.py` exposes generation and practical processing commands:
 
-`config.py` loads defaults and optional JSON settings. `main.py` owns orchestration so the same functions can later be called from a web API, desktop app, or batch script without reusing CLI code.
+- `generate`
+- `convert`
+- `normalize`
+- `enhance`
+- `transcribe`
+- `trim`
 
-Generation providers implement one small method and declare their output extension. The demo provider writes a deterministic WAV file with only the standard library. The Bark provider imports heavy dependencies only when selected.
+`main.py` validates local files, chooses output paths, and calls focused utilities. Generation providers remain separate because they may require large optional model dependencies.
 
-FFmpeg operations remain plain utility functions because they do not need provider classes or application state.
+```text
+CLI -> config -> main
+                  ├── provider generation
+                  ├── FFmpeg processing
+                  └── faster-whisper transcription
+```
+
+FFmpeg and transcription are functions rather than provider classes because they are concrete operations, not interchangeable generation backends.
+
+The transcription model is loaded per command. This is simple and reliable for local use. A persistent model process should be added only if repeated startup time becomes a real bottleneck.

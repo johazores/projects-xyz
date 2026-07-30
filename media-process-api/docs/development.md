@@ -2,16 +2,16 @@
 
 ## Start with the media CLI
 
-The API is a thin transport layer. Debug generation in the relevant media project first:
+The API is transport and orchestration only. Debug the operation directly first:
 
 ```bash
-cd image-process
-python cli.py generate --prompt "A clean test image"
+cd audio-process
+python cli.py transcribe path/to/video.mp4 --format srt
 ```
 
-After that succeeds, test the API endpoint.
+Then test the matching API route.
 
-## Run with reload
+## Run locally
 
 ```bash
 cd media-process-api
@@ -22,45 +22,41 @@ uvicorn app.main:app --reload
 
 ```bash
 python -m compileall app ../audio-process ../image-process ../video-process
-```
-
-Check discovery endpoints:
-
-```bash
 curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/capabilities
 curl http://127.0.0.1:8000/providers
-curl http://127.0.0.1:8000/models
+curl http://127.0.0.1:8000/image/presets
 ```
 
-Generate one artifact for every media type using [../examples/requests.http](../examples/requests.http).
+Use `examples/requests.http` to test practical operations.
 
 ## Boundaries
 
 Keep in the API:
 
-- HTTP request and response models
-- route definitions
-- local server settings
+- request and response models
+- routes
+- project output grouping
 - CLI invocation
-- consistent output metadata
+- consistent error responses
 
 Keep in the media projects:
 
-- provider selection
-- model or API integration
-- generation logic
-- provider retries
+- generation providers
+- FFmpeg operations
+- transcription
+- prompt presets
+- background removal
 - output naming
-- media-specific processing
 
-## Adding dependencies
+## Dependencies
 
-Add a dependency to `media-process-api/requirements.txt` only when the API itself imports it. Provider dependencies should remain in the relevant media project.
+Add a dependency to `media-process-api/requirements.txt` only when the API imports it directly. Optional media dependencies must remain in the relevant media project requirement file, even though they are installed into the API environment when the API uses that operation.
 
-## Coding style
+## Style
 
-- Prefer synchronous route functions while work is performed by blocking subprocesses.
-- Use explicit lists for subprocess arguments.
-- Never build shell command strings from request values.
-- Keep service functions small.
-- Avoid a repository-wide shared package until repeated code creates a real maintenance issue.
+- use synchronous routes while subprocesses are blocking
+- pass subprocess arguments as lists
+- never use `shell=True` with request values
+- keep one service function per operation
+- reuse request models only when their fields genuinely match

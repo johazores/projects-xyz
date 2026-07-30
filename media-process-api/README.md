@@ -1,138 +1,54 @@
 # Media Process API
 
-A lightweight FastAPI server that exposes the repository audio, image, and video tools through one local HTTP API.
+A lightweight local FastAPI server for practical audio, image, and video workflows.
 
-The API is intentionally small. It validates requests, invokes the existing media CLIs, and returns the generated file path and URL. Provider logic remains inside `audio-process`, `image-process`, and `video-process`.
+The API validates requests, invokes the existing media CLIs, and returns local output paths and URLs. Business logic stays inside the media projects.
 
-## Why the API uses the existing CLIs
+## Why subprocess integration remains
 
-The three media projects are independent folders with their own configuration, providers, and optional dependencies. The API runs each CLI in a subprocess instead of duplicating that logic or forcing a large package refactor.
+- each media project stays independently runnable
+- optional model dependencies remain isolated
+- the API avoids duplicate provider logic
+- one failed media command does not corrupt the server process
+- no package reorganization is required
 
-This provides useful isolation today:
-
-- each media project remains independently runnable
-- provider dependencies do not leak into the API
-- one failing provider does not corrupt the API process
-- adding the API does not reorganize existing files
-
-A future phase can move selected local models in-process when persistent model loading becomes more important than isolation.
+Selected providers can move in-process later if repeated model startup becomes a measured problem.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
     Client[Local client] --> API[FastAPI]
-    API --> AudioService[Audio service]
-    API --> ImageService[Image service]
-    API --> VideoService[Video service]
-    AudioService --> AudioCLI[audio-process CLI]
-    ImageService --> ImageCLI[image-process CLI]
-    VideoService --> VideoCLI[video-process CLI]
-    AudioCLI --> Outputs[Local outputs]
-    ImageCLI --> Outputs
-    VideoCLI --> Outputs
+    API --> Audio[audio-process CLI]
+    API --> Image[image-process CLI]
+    API --> Video[video-process CLI]
+    Audio --> Outputs[Project-organized local outputs]
+    Image --> Outputs
+    Video --> Outputs
 ```
-
-See [docs/architecture.md](docs/architecture.md) for the complete request flow and design tradeoffs.
-
-## Folder structure
-
-```text
-media-process-api/
-├── app/
-│   ├── main.py
-│   ├── config.py
-│   ├── models.py
-│   ├── routes/
-│   │   ├── audio.py
-│   │   ├── image.py
-│   │   └── video.py
-│   └── services/
-│       ├── audio_service.py
-│       ├── image_service.py
-│       ├── video_service.py
-│       ├── common.py
-│       └── runner.py
-├── outputs/
-│   ├── audio/
-│   ├── image/
-│   └── video/
-├── examples/
-├── docs/
-├── requirements.txt
-├── .env.example
-└── README.md
-```
-
-`models.py` is intentionally one file. A models package can be introduced only when the number of request and response models makes it useful.
-
-## Requirements
-
-- Python 3.10 or newer
-- The repository must keep `media-process-api`, `audio-process`, `image-process`, and `video-process` beside each other
-- FFmpeg only for audio conversion features used directly by `audio-process`
-- Optional provider dependencies only when using providers such as Bark
-
-The built-in demo providers work without a GPU or cloud account.
 
 ## Installation
+
+Python 3.11 is recommended.
 
 ```bash
 cd media-process-api
 python -m venv .venv
-```
-
-Activate the environment.
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-macOS or Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Install the API dependencies:
-
-```bash
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Copy the optional environment file:
+Install optional practical features in the same environment:
 
 ```bash
-cp .env.example .env
+python -m pip install -r ../audio-process/requirements-transcription.txt
+python -m pip install -r ../image-process/requirements-background.txt
 ```
 
-Windows PowerShell:
+Install FFmpeg for audio enhancement and video processing.
 
-```powershell
-Copy-Item .env.example .env
-```
-
-The defaults work without creating `.env`.
-
-## Configuration
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `MEDIA_API_NAME` | `AI Media Processing Toolkit API` | OpenAPI title and root message |
-| `MEDIA_API_HOST` | `127.0.0.1` | Local bind address |
-| `MEDIA_API_PORT` | `8000` | Local server port |
-| `MEDIA_API_LOG_LEVEL` | `INFO` | Python log level |
-| `MEDIA_API_PROCESS_TIMEOUT` | `600` | Maximum seconds allowed for one media CLI call |
-| `MEDIA_API_OUTPUT_DIR` | `media-process-api/outputs` | Shared local output directory |
-
-Provider-specific settings remain in each media project. This keeps the API focused on transport and orchestration.
-
-## Run the server
-
-From `media-process-api`:
+## Run
 
 ```bash
 uvicorn app.main:app --reload
@@ -140,123 +56,168 @@ uvicorn app.main:app --reload
 
 Open:
 
-- API documentation: `http://127.0.0.1:8000/docs`
-- Health check: `http://127.0.0.1:8000/health`
-- Provider list: `http://127.0.0.1:8000/providers`
-- Model list: `http://127.0.0.1:8000/models`
+- docs: `http://127.0.0.1:8000/docs`
+- health: `http://127.0.0.1:8000/health`
+- capabilities: `http://127.0.0.1:8000/capabilities`
+- providers: `http://127.0.0.1:8000/providers`
+- image presets: `http://127.0.0.1:8000/image/presets`
 
-To use values from `config.py` without repeating the host and port:
+## Configuration
 
-```bash
-python -m app
-```
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `MEDIA_API_NAME` | `AI Media Processing Toolkit API` | API title |
+| `MEDIA_API_HOST` | `127.0.0.1` | local bind address |
+| `MEDIA_API_PORT` | `8000` | server port |
+| `MEDIA_API_LOG_LEVEL` | `INFO` | log level |
+| `MEDIA_API_PROCESS_TIMEOUT` | `3600` | maximum seconds for one media command |
+| `MEDIA_API_OUTPUT_DIR` | `outputs` | local output root |
 
-## API endpoints
+The server is intended for local use. Do not expose it publicly without adding authentication and path restrictions.
+
+## Endpoints
 
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
-| `GET` | `/health` | Confirm the server is running |
-| `GET` | `/providers` | List providers by media type |
-| `GET` | `/models` | List known provider models or demo implementations |
-| `POST` | `/audio/generate` | Generate an audio artifact |
-| `POST` | `/image/generate` | Generate an image artifact |
-| `POST` | `/video/generate` | Generate a video artifact or request manifest |
+| `GET` | `/health` | server status |
+| `GET` | `/capabilities` | practical operations by media type |
+| `GET` | `/providers` | generation providers |
+| `GET` | `/models` | known provider models |
+| `GET` | `/image/presets` | reusable prompt presets |
+| `POST` | `/audio/generate` | generate audio |
+| `POST` | `/audio/convert` | convert a local file to MP3 |
+| `POST` | `/audio/normalize` | normalize loudness |
+| `POST` | `/audio/enhance` | clean spoken audio |
+| `POST` | `/audio/trim` | trim a local file |
+| `POST` | `/audio/transcribe` | create TXT or SRT output |
+| `POST` | `/image/generate` | generate one image |
+| `POST` | `/image/generate-batch` | generate several images sequentially |
+| `POST` | `/image/remove-background` | create transparent PNG |
+| `POST` | `/video/generate` | create provider generation artifact |
+| `POST` | `/video/resize` | resize and pad a local video |
+| `POST` | `/video/frames` | extract frames and return a manifest |
 
-Generated files are also served from `/outputs/...`.
+## Project output grouping
 
-## Example requests
-
-### Generate audio
-
-```bash
-curl -X POST http://127.0.0.1:8000/audio/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"A calm notification tone","provider":"demo"}'
-```
-
-### Generate an image
-
-```bash
-curl -X POST http://127.0.0.1:8000/image/generate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt":"A floating island above soft clouds",
-    "negative_prompt":"blurry text",
-    "provider":"demo"
-  }'
-```
-
-### Generate a video artifact
-
-```bash
-curl -X POST http://127.0.0.1:8000/video/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"A slow camera move through a neon city","provider":"demo"}'
-```
-
-More copy-ready examples are available in [examples/requests.http](examples/requests.http).
-
-## Example response
+Most requests accept an optional `project` field:
 
 ```json
 {
-  "media_type": "image",
-  "provider": "demo",
-  "filename": "generated-floating-island-20260730-120000-a1b2c3.svg",
-  "output_path": "/local/projects-xyz/media-process-api/outputs/image/generated-floating-island-20260730-120000-a1b2c3.svg",
-  "output_url": "/outputs/image/generated-floating-island-20260730-120000-a1b2c3.svg"
+  "input_path": "C:/media/episode-12.mp4",
+  "output_format": "srt",
+  "project": "episode-12"
 }
 ```
 
-The exact filename changes for every request.
+The result is stored under:
+
+```text
+outputs/episode-12/audio/
+```
+
+The project value is converted into a safe folder name.
+
+## API examples
+
+### Generate subtitles
+
+```bash
+curl -X POST http://127.0.0.1:8000/audio/transcribe \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_path":"C:/media/video.mp4",
+    "output_format":"srt",
+    "model":"small",
+    "project":"episode-12"
+  }'
+```
+
+### Enhance narration
+
+```bash
+curl -X POST http://127.0.0.1:8000/audio/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"input_path":"C:/media/narration.wav","project":"episode-12"}'
+```
+
+### Batch game asset prompts
+
+```bash
+curl -X POST http://127.0.0.1:8000/image/generate-batch \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompts":["forest guardian portrait","healing potion icon"],
+    "preset":"pixel-art",
+    "provider":"demo",
+    "project":"forest-game"
+  }'
+```
+
+### Remove a background
+
+```bash
+curl -X POST http://127.0.0.1:8000/image/remove-background \
+  -H "Content-Type: application/json" \
+  -d '{"input_path":"C:/media/character.png","project":"forest-game"}'
+```
+
+### Resize a vertical clip
+
+```bash
+curl -X POST http://127.0.0.1:8000/video/resize \
+  -H "Content-Type: application/json" \
+  -d '{"input_path":"C:/media/highlight.mp4","preset":"shorts","project":"episode-12"}'
+```
+
+### Extract reference frames
+
+```bash
+curl -X POST http://127.0.0.1:8000/video/frames \
+  -H "Content-Type: application/json" \
+  -d '{"input_path":"C:/media/gameplay.mp4","fps":1,"project":"forest-game"}'
+```
+
+More requests are in [examples/requests.http](examples/requests.http).
+
+## Response
+
+```json
+{
+  "media_type": "audio",
+  "operation": "transcribe",
+  "provider": null,
+  "filename": "video-transcript.srt",
+  "output_path": "C:/projects/projects-xyz/media-process-api/outputs/episode-12/audio/video-transcript.srt",
+  "output_url": "/outputs/episode-12/audio/video-transcript.srt"
+}
+```
 
 ## Adding a provider
 
-1. Add the provider to the appropriate media project under `providers/`.
-2. Register it in that project's `providers/__init__.py`.
-3. Test it through the media CLI.
-4. Add its name and model metadata to `PROVIDER_CATALOG` in `app/config.py`.
-5. Call the existing API endpoint with the new provider name.
+1. Implement and register it in the relevant media project.
+2. Test it through that project's CLI.
+3. Add its model metadata to `PROVIDER_CATALOG`.
+4. Reuse the existing generation endpoint when request fields are unchanged.
 
-No route or service change is required when the provider uses the existing request fields.
+## Adding an operation
 
-See [docs/providers.md](docs/providers.md) for an example.
-
-## Adding an endpoint
-
-Add an endpoint only when it represents a new operation rather than a provider-specific variation.
-
-1. Add or reuse a request model in `app/models.py`.
-2. Keep the operation in the relevant media project where possible.
-3. Add a small service function that invokes the media CLI.
-4. Add the route and include it in `app/main.py`.
-5. Add an example request and update this endpoint table.
-
-## Development workflow
-
-- Make changes on a `feat/<feature-name>` branch.
-- Keep provider logic in the media projects.
-- Keep HTTP validation and response formatting in this API.
-- Test the media CLI first, then test the API endpoint.
-- Do not add infrastructure until a current feature requires it.
-
-See [docs/development.md](docs/development.md).
+1. Implement the operation in the relevant media project.
+2. Add one request model only if existing models do not fit.
+3. Add a small service function that calls the CLI.
+4. Add one route and one example request.
 
 ## Error handling
 
-- FastAPI returns `422` for invalid request bodies.
-- Media CLI failures return `422` with a readable `detail` message.
-- A timed-out media process returns `422` and states the configured timeout.
-- Unexpected server failures remain `500` errors so they are not silently hidden.
+- invalid request bodies return `422`
+- missing files and optional dependencies return readable `422` details
+- subprocess timeouts return `422`
+- unexpected server errors remain `500`
 
 ## Troubleshooting
 
-See [docs/troubleshooting.md](docs/troubleshooting.md) for common path, dependency, timeout, and provider errors.
+- Use absolute input paths, especially on Windows.
+- Install optional requirements in the API virtual environment.
+- Increase `MEDIA_API_PROCESS_TIMEOUT` for larger models or long videos.
+- Confirm FFmpeg is available from the same terminal that starts the API.
 
-## Future improvements
-
-- Add tested local image and video providers
-- Add optional request fields only when providers need them
-- Add job polling when a real asynchronous video provider is introduced
-- Reuse loaded local models in-process when startup cost becomes a measured problem
-- Add lightweight API tests during the stabilization phase
+See [docs/troubleshooting.md](docs/troubleshooting.md).

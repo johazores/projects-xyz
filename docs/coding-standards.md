@@ -1,28 +1,35 @@
 # Coding Standards
 
-## Python style
+## Python
 
-- Use Python 3.10 or newer.
-- Add type hints to public functions and meaningful internal boundaries.
-- Keep functions focused and short.
-- Prefer dataclasses and standard-library modules when they are sufficient.
-- Raise clear exceptions with actionable messages.
-- Use comments only when the reason is not obvious from the code.
+- Use Python 3.11 for the full toolkit.
+- Add type hints to public functions and meaningful boundaries.
+- Keep functions focused and explicit.
+- Prefer standard-library modules and dataclasses when sufficient.
+- Raise actionable errors.
+- Comment decisions, not obvious syntax.
 
-## Simplicity rules
+## Simplicity
 
-- Prefer a function over a class when no state is needed.
-- Prefer one provider file over a provider framework.
-- Do not introduce dependency injection containers, plugin loaders, registries, or database configuration without a current requirement.
-- Do not share code across projects until duplication becomes costly enough to justify packaging.
-- Avoid hidden behavior and implicit global state.
+- Prefer functions over classes when state is unnecessary.
+- Use provider classes only for interchangeable generation backends.
+- Keep concrete transformations as focused utilities.
+- Avoid dependency injection containers, dynamic plugin loaders, queues, and databases without a current need.
+- Keep optional dependencies in separate requirement files.
+
+## Subprocesses
+
+- Pass arguments as lists.
+- Do not use `shell=True` with user-controlled values.
+- Capture output and return concise errors.
+- Print the final absolute artifact path from successful CLI commands.
 
 ## Naming
 
-- Use `snake_case` for Python files, functions, and variables.
-- Use `PascalCase` for classes and protocols.
-- Use clear media-specific names such as `generate_image` rather than generic names such as `execute`.
+- `snake_case` for files, functions, and variables.
+- `PascalCase` for classes and protocols.
+- Use operation-specific names such as `resize_video_file` and `transcribe_audio_file`.
 
 ## Logging
 
-Use `logging` for progress and diagnostics. CLI errors should be concise and should not expose full stack traces unless debug logging is enabled.
+Use `logging` for progress and diagnostics. Keep CLI errors readable. Do not print stack traces by default.

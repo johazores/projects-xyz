@@ -1,0 +1,17 @@
+{
+  "health": {
+    "status": "ok"
+  },
+  "providers": {
+    "audio": ["demo", "bark"],
+    "image": ["demo"],
+    "video": ["demo"]
+  },
+  "generated_output": {
+    "media_type": "image",
+    "provider": "demo",
+    "filename": "generated-floating-island-20260730-120000-a1b2c3.svg",
+    "output_path": "/local/projects-xyz/media-process-api/outputs/image/generated-floating-island-20260730-120000-a1b2c3.svg",
+    "output_url": "/outputs/image/generated-floating-island-20260730-120000-a1b2c3.svg"
+  }
+}

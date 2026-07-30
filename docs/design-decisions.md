@@ -1,8 +1,12 @@
 # Design Decisions
 
-## CLI first
+## CLI projects with an optional API
 
-The original audio project used FastAPI. The foundation now uses a CLI because the toolkit is local, easier to learn, and does not need an HTTP server yet.
+Each media project remains CLI-first because that is the simplest way to learn, test, and reuse it. `media-process-api` is an optional thin HTTP entry point and does not replace the CLIs.
+
+## Subprocess integration
+
+The API invokes the existing CLIs in subprocesses. This preserves the current folders, avoids collisions between repeated top-level module names, and isolates optional provider dependencies. In-process model reuse can be introduced one media project at a time when repeated loading becomes a measured performance problem.
 
 ## Independent projects
 

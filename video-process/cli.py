@@ -28,12 +28,13 @@ def run() -> int:
     try:
         config = load_config(args.config)
         configure_logging(config.log_level)
-        generate_video(
+        output_path = generate_video(
             prompt=args.prompt,
             config=config,
             provider_name=args.provider,
             output_dir=args.output_dir,
         )
+        print(output_path.resolve())
         return 0
     except Exception as exc:
         logging.getLogger(__name__).error("%s", exc)

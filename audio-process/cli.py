@@ -46,13 +46,21 @@ def run() -> int:
         configure_logging(config.log_level)
 
         if args.command == "generate":
-            generate_audio(args.prompt, config, args.provider, args.output_dir)
+            output_path = generate_audio(args.prompt, config, args.provider, args.output_dir)
         elif args.command == "convert":
-            convert_audio_file(args.input, config, args.output_dir)
+            output_path = convert_audio_file(args.input, config, args.output_dir)
         elif args.command == "normalize":
-            normalize_audio_file(args.input, config, args.output_dir)
-        elif args.command == "trim":
-            trim_audio_file(args.input, args.start, args.duration, config, args.output_dir)
+            output_path = normalize_audio_file(args.input, config, args.output_dir)
+        else:
+            output_path = trim_audio_file(
+                args.input,
+                args.start,
+                args.duration,
+                config,
+                args.output_dir,
+            )
+
+        print(output_path.resolve())
         return 0
     except Exception as exc:
         logging.getLogger(__name__).error("%s", exc)

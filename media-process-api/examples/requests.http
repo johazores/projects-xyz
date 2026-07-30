@@ -1,0 +1,38 @@
+@baseUrl = http://127.0.0.1:8000
+
+### Health
+GET {{baseUrl}}/health
+
+### Providers
+GET {{baseUrl}}/providers
+
+### Models
+GET {{baseUrl}}/models
+
+### Generate demo audio
+POST {{baseUrl}}/audio/generate
+Content-Type: application/json
+
+{
+  "prompt": "A calm notification tone",
+  "provider": "demo"
+}
+
+### Generate demo image
+POST {{baseUrl}}/image/generate
+Content-Type: application/json
+
+{
+  "prompt": "A floating island above soft clouds",
+  "negative_prompt": "blurry text",
+  "provider": "demo"
+}
+
+### Generate demo video request
+POST {{baseUrl}}/video/generate
+Content-Type: application/json
+
+{
+  "prompt": "A slow camera move through a neon city",
+  "provider": "demo"
+}

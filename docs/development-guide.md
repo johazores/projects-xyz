@@ -8,7 +8,7 @@
 
 ## Local setup
 
-Each project is independent:
+Each media project is independent:
 
 ```bash
 cd audio-process
@@ -22,6 +22,15 @@ python -m pip install -r requirements.txt
 ```
 
 The base demo providers use only the standard library, so installation is normally immediate.
+
+For the unified local API:
+
+```bash
+cd media-process-api
+python -m venv .venv
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
 ## Configuration workflow
 
@@ -44,13 +53,14 @@ The base demo providers use only the standard library, so installation is normal
 Before committing:
 
 ```bash
-python -m compileall audio-process image-process video-process
+python -m compileall audio-process image-process video-process media-process-api/app
 python audio-process/cli.py --help
 python image-process/cli.py --help
 python video-process/cli.py --help
+cd media-process-api && python -m app
 ```
 
-Run each demo provider once and confirm its output is created in the expected folder.
+Run each demo provider once, then call the three API generation endpoints and confirm outputs are created in the expected folders.
 
 ## Git workflow
 

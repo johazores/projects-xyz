@@ -1,0 +1,32 @@
+name: Bug report
+description: Report a reproducible media workflow problem
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: input
+    id: project
+    attributes:
+      label: Project and command
+      placeholder: audio-process transcribe
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Python, operating system, and FFmpeg version
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Safe reproduction
+      description: Do not attach private media, API keys, or large model files.
+    validations:
+      required: true

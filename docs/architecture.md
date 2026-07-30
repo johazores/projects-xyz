@@ -2,7 +2,23 @@
 
 ## Repository model
 
-The toolkit is a collection of independent Python projects rather than one large application. Each project can be opened, understood, and run on its own.
+The toolkit contains three independent media projects and one optional local API.
+
+```mermaid
+flowchart LR
+    Client[CLI user or local client] --> API[media-process-api]
+    Client --> Audio[audio-process]
+    Client --> Image[image-process]
+    Client --> Video[video-process]
+    API --> Audio
+    API --> Image
+    API --> Video
+    Audio --> Outputs[Local outputs]
+    Image --> Outputs
+    Video --> Outputs
+```
+
+Each media project can still be opened, understood, and run on its own:
 
 ```text
 CLI -> configuration -> orchestration -> provider -> output
@@ -10,11 +26,17 @@ CLI -> configuration -> orchestration -> provider -> output
                          -> media utilities
 ```
 
-## Shared project pattern
+The API adds a thin HTTP path:
+
+```text
+HTTP route -> service -> existing media CLI -> provider -> shared API outputs
+```
+
+## Shared media project pattern
 
 Each media project contains:
 
-- `cli.py`: parses terminal commands and prints user-facing errors
+- `cli.py`: parses terminal commands, prints the final output path, and reports errors
 - `config.py`: loads defaults and optional JSON configuration
 - `main.py`: coordinates providers, retries, logging, and output paths
 - `providers/`: contains the built-in demo provider and future integrations
@@ -23,22 +45,37 @@ Each media project contains:
 - `outputs/`: stores generated files and is ignored by Git
 - `docs/`: contains architecture and troubleshooting notes
 
+## API pattern
+
+`media-process-api` contains:
+
+- `app/main.py`: creates FastAPI, mounts outputs, and registers routes
+- `app/config.py`: loads minimal local server settings
+- `app/models.py`: defines the small shared request and response models
+- `app/routes/`: exposes one generation route per media type
+- `app/services/`: translates requests into existing CLI calls
+- `outputs/`: stores API-generated audio, image, and video artifacts
+
+The API uses subprocesses because the existing projects have independent top-level module names and optional dependencies. This avoids a broad package refactor and keeps each project runnable on its own. See [the API architecture](../media-process-api/docs/architecture.md) for tradeoffs and the gradual in-process migration path.
+
 ## Provider boundary
 
-A provider has one responsibility: accept a generation request and create an output. The CLI does not know how the provider works.
+A provider has one responsibility: accept a generation request and create an output. Neither the CLI nor the API route needs to know how the provider works.
 
-This keeps future services isolated. A new provider should not require changes to argument parsing, output naming, retries, or logging unless the provider introduces a genuinely new capability.
+A new provider normally requires:
+
+1. one provider implementation
+2. one provider registry entry in the media project
+3. one metadata entry in the API provider catalog
+
+No endpoint change is needed when the provider uses the existing request fields.
 
 ## Configuration
 
-Normal settings belong in JSON files because they are visible, portable, and easy to review. Environment variables are limited to:
+Normal media settings belong in JSON files because they are visible, portable, and easy to review. Environment variables are limited to configuration paths, secrets, and minimal API bootstrapping values such as host, port, timeout, and output location.
 
-- the path to a configuration file
-- API keys or tokens
-- secrets that should not be committed
-
-There is no database or Admin CMS in the current toolkit. Adding either would create unnecessary infrastructure for local command-line projects.
+There is no database or Admin CMS in the current toolkit. Adding either would create unnecessary infrastructure for local development projects.
 
 ## Dependency strategy
 
-The demo providers use only the Python standard library. Large model libraries and provider SDKs are optional and should be installed only by users who need them.
+The demo providers use only the Python standard library. The API installs only FastAPI, Uvicorn, and dotenv support. Large model libraries and provider SDKs remain optional and belong to the media project that uses them.

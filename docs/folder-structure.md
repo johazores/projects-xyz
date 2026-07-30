@@ -15,6 +15,7 @@ projects-xyz/
 │   ├── folder-structure.md
 │   ├── review-report.md
 │   └── roadmap.md
+├── media-process-api/
 ├── audio-process/
 ├── image-process/
 └── video-process/
@@ -37,4 +38,22 @@ Every media project follows this shape:
 └── docs/
 ```
 
-The folders are intentionally shallow. Add deeper folders only when a project becomes difficult to navigate without them.
+The API follows this intentionally small shape:
+
+```text
+media-process-api/
+├── app/
+│   ├── main.py
+│   ├── config.py
+│   ├── models.py
+│   ├── routes/
+│   └── services/
+├── examples/
+├── outputs/
+├── docs/
+├── requirements.txt
+├── .env.example
+└── README.md
+```
+
+The folders remain shallow. Add deeper folders only when a project becomes difficult to navigate without them.

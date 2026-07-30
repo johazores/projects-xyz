@@ -16,6 +16,7 @@ The repository is designed as a reusable personal toolkit and portfolio project.
 
 | Project | Status | Purpose |
 | --- | --- | --- |
+| [`media-process-api`](media-process-api/) | Local API | Expose audio, image, and video generation through one lightweight FastAPI server |
 | [`audio-process`](audio-process/) | Reference implementation | Generate demo audio, use optional Bark generation, and process audio with FFmpeg |
 | [`image-process`](image-process/) | Foundation | Generate prompt-based demo images and prepare provider adapters |
 | [`video-process`](video-process/) | Foundation | Create structured video generation requests and prepare provider adapters |
@@ -43,6 +44,18 @@ python cli.py generate --prompt "A slow camera move through a neon city"
 ```
 
 Generated files are saved inside each project's `outputs/` directory by default.
+
+Run all three projects through the local API:
+
+```bash
+cd ../media-process-api
+python -m venv .venv
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` for the interactive API documentation. See the [API README](media-process-api/README.md) for Windows setup, requests, responses, providers, and troubleshooting.
 
 ## Repository documentation
 

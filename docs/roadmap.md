@@ -10,6 +10,9 @@
 - [x] Add demo providers and example prompts
 - [x] Add repository and project documentation
 - [x] Add output management, logging, retries, and graceful errors
+- [x] Add a lightweight FastAPI entry point for all media projects
+- [x] Add provider and model discovery endpoints
+- [x] Add unified API examples and documentation
 
 ## Provider expansion
 
@@ -18,6 +21,14 @@
 - [ ] Add additional audio generation providers
 - [ ] Add local model examples
 - [ ] Document provider capabilities and limitations
+
+## API evolution
+
+- [ ] Add a real local image provider and expose its model metadata
+- [ ] Add a real local video provider and job polling only when required
+- [ ] Add optional API fields only when provider capabilities require them
+- [ ] Move selected providers in-process when model reload time becomes a measured bottleneck
+- [ ] Add lightweight API tests during stabilization
 
 ## Workflow improvements
 

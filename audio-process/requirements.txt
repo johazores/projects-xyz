@@ -1,3 +1,0 @@
-# Base audio generation and FFmpeg utilities use only the Python standard library.
-# Install requirements-ai.txt for Bark.
-# Install requirements-transcription.txt for faster-whisper transcription.

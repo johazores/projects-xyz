@@ -1,3 +1,0 @@
-local AI tools that save hours
-building game assets with Python
-my simple YouTube production workflow

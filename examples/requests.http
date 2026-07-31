@@ -1,0 +1,52 @@
+@base = http://127.0.0.1:8000
+
+GET {{base}}/health
+
+### Generate a local demo tone
+POST {{base}}/audio/generate
+Content-Type: application/json
+
+{
+  "prompt": "menu confirmation sound",
+  "provider": "demo",
+  "project": "game-prototype"
+}
+
+### Clean spoken audio
+POST {{base}}/audio/enhance
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/narration.wav",
+  "project": "youtube-episode-01"
+}
+
+### Create subtitles
+POST {{base}}/audio/transcribe
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/episode.mp4",
+  "output_format": "srt",
+  "project": "youtube-episode-01"
+}
+
+### Generate an image prompt card using a preset
+POST {{base}}/image/generate
+Content-Type: application/json
+
+{
+  "prompt": "a mysterious forest guardian",
+  "preset": "character-portrait",
+  "project": "game-prototype"
+}
+
+### Resize for a short
+POST {{base}}/video/resize
+Content-Type: application/json
+
+{
+  "input_path": "C:/media/clip.mp4",
+  "preset": "shorts",
+  "project": "youtube-episode-01"
+}

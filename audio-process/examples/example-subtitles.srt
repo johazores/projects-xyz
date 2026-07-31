@@ -1,7 +1,0 @@
-1
-00:00:00,000 --> 00:00:02,400
-Welcome to the local AI media toolkit.
-
-2
-00:00:02,400 --> 00:00:05,000
-This subtitle file was created from timestamped speech segments.

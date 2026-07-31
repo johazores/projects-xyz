@@ -1,6 +1,0 @@
-{
-  "provider": "demo",
-  "prompt": "A calm notification tone",
-  "output_type": "wav",
-  "note": "Run the demo command to create a local example in outputs/."
-}

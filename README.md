@@ -1,169 +1,92 @@
-# Local Media Toolkit
+# AI Media Toolkit
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](docs/development-guide.md)
-[![API](https://img.shields.io/badge/api-FastAPI-009688.svg)](media-process-api/README.md)
+One lightweight FastAPI application for local audio, image, and video work.
 
-A local-first Python toolkit for practical audio, image, and video processing.
+The repository was intentionally consolidated into a single app. There are no separate media projects, duplicate CLIs, job queues, databases, or cloud requirements.
 
-The repository supports daily content production, indie game asset preparation, rapid prototyping, and experimentation with local models. Each media project remains independently usable, with an optional FastAPI entry point for shared workflows.
+## What works
 
-> **Status:** Active toolkit development. Core local processing workflows are usable today, while generation providers remain intentionally small and optional.
+### Audio
 
-## Capabilities
+- Demo tone generation
+- Optional Bark text-to-audio
+- MP3 conversion
+- Loudness normalization
+- Spoken-audio enhancement
+- Trimming
+- Optional faster-whisper transcription and SRT subtitles
 
-| Project | Practical capabilities |
-| --- | --- |
-| [`audio-process`](audio-process/) | Audio generation, conversion, normalization, spoken-audio cleanup, transcription, and SRT subtitles |
-| [`image-process`](image-process/) | Image generation, prompt presets, batch prompts, and local background removal |
-| [`video-process`](video-process/) | Generation request preparation, social-format resizing, and frame extraction |
-| [`media-process-api`](media-process-api/) | Shared local HTTP API for the same audio, image, and video workflows |
+### Image
 
-Useful local processing is implemented through FFmpeg, faster-whisper, and rembg. Optional model dependencies are installed only when needed.
+- Prompt presets
+- Batch prompt processing
+- Local background removal with optional rembg
+- A dependency-free SVG prompt-card provider for testing the workflow
 
-## Requirements
+### Video
 
-- Python 3.11 recommended
-- FFmpeg for audio and video processing
-- Optional dependencies for transcription, background removal, or generation providers
+- Request manifest generation
+- Resize presets for YouTube, Shorts, square, and 720p
+- Frame extraction with a JSON manifest
 
-Confirm FFmpeg is available:
+## Structure
 
-```bash
-ffmpeg -version
+```text
+app/
+  main.py
+  config.py
+  models.py
+  routes/
+  services/
+  utils/
+outputs/
+examples/
+docs/
+requirements.txt
+requirements-local.txt
+requirements-bark.txt
+presets.json
 ```
 
-## Installation
+## Quick start
 
 ```bash
 git clone https://github.com/johazores/projects-xyz.git
 cd projects-xyz
-```
-
-Each project contains its own requirements and setup instructions.
-
-## Usage examples
-
-### Create subtitles
-
-```bash
-cd audio-process
-python -m pip install -r requirements-transcription.txt
-python cli.py transcribe ../recording.mp4 --format srt --model small
-```
-
-### Clean recorded voice audio
-
-```bash
-python cli.py enhance ../voice-recording.wav
-```
-
-### Generate game asset concepts
-
-```bash
-cd ../image-process
-python cli.py batch examples/game-assets.txt --preset pixel-art
-```
-
-### Remove an image background
-
-```bash
-python -m pip install -r requirements-background.txt
-python cli.py remove-background ../character.png
-```
-
-### Resize a vertical video
-
-```bash
-cd ../video-process
-python cli.py resize ../clip.mp4 --preset shorts
-```
-
-### Extract reference frames
-
-```bash
-python cli.py frames ../clip.mp4 --fps 1
-```
-
-## Local API
-
-```bash
-cd media-process-api
 python -m venv .venv
 source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m app
 ```
 
-Open `http://127.0.0.1:8000/docs` for the interactive API.
+Open `http://127.0.0.1:8000/docs`.
 
-Optional processing dependencies must be installed in the same environment used by the API:
+Optional local processing dependencies:
 
 ```bash
-python -m pip install -r ../audio-process/requirements-transcription.txt
-python -m pip install -r ../image-process/requirements-background.txt
+python -m pip install -r requirements-local.txt
 ```
 
-## Output organization
+## Example
 
-CLI commands write to each media project's `outputs/` folder unless `--output-dir` is supplied.
-
-API requests may include a project name:
-
-```text
-media-process-api/outputs/my-youtube-video/audio/
-media-process-api/outputs/my-youtube-video/image/
-media-process-api/outputs/my-youtube-video/video/
+```bash
+curl -X POST http://127.0.0.1:8000/audio/generate \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"menu confirmation sound","provider":"demo","project":"game-prototype"}'
 ```
 
-Generated media, local configuration, virtual environments, model caches, and personal files must not be committed.
+Generated files are available through `/outputs/...` and stored locally in the `outputs` directory.
 
-## Architecture
-
-The toolkit keeps each media type independent while sharing a small set of design principles:
-
-- CLI commands handle user input and readable errors.
-- Processing functions own practical media operations.
-- Provider interfaces isolate optional generation backends.
-- Configuration files manage normal runtime settings.
-- Environment variables are limited to secrets and bootstrap paths.
-- The FastAPI application calls the same underlying workflows rather than duplicating processing logic.
-
-Read the [architecture guide](docs/architecture.md) and [design decisions](docs/design-decisions.md).
-
-## Project structure
-
-```text
-audio-process/       audio generation and processing
-image-process/       image generation and processing
-video-process/       video generation preparation and processing
-media-process-api/   local FastAPI interface
-docs/                architecture, workflows, development, roadmap, and community docs
-```
-
-## Development
-
-Start with the [development guide](docs/development-guide.md) and [coding standards](docs/coding-standards.md).
-
-Changes should preserve the local-first design, optional dependency boundaries, clear command behavior, and independent project usability.
-
-## Documentation
-
-- [Documentation index](docs/index.md)
-- [Practical workflows](docs/practical-workflows.md)
-- [Architecture](docs/architecture.md)
-- [Development guide](docs/development-guide.md)
-- [Coding standards](docs/coding-standards.md)
+- [Usage guide](docs/usage.md)
 - [Roadmap](docs/roadmap.md)
-- [Changelog](docs/changelog.md)
-- [Contributing](docs/contributing.md)
-- [Security policy](docs/security.md)
-- [Code of conduct](docs/code-of-conduct.md)
+- [Request examples](examples/requests.http)
+
+## Requirements
+
+- Python 3.11 recommended
+- FFmpeg for audio and video processing commands
+- No cloud account required
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Author
-
-Created and maintained by [Johanssen Azores](https://github.com/johazores).

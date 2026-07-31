@@ -1,2 +1,0 @@
-# Optional local speech-to-text and subtitle generation.
-faster-whisper==1.2.1

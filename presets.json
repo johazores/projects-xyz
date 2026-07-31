@@ -1,0 +1,22 @@
+{
+  "youtube-thumbnail": {
+    "prefix": "bold YouTube thumbnail composition, strong focal subject, high contrast, readable empty space for title text,",
+    "negative": "small unreadable text, clutter, watermark, low contrast"
+  },
+  "character-portrait": {
+    "prefix": "game character portrait, clear silhouette, expressive face, consistent costume details, neutral background,",
+    "negative": "extra limbs, cropped face, duplicate features, watermark"
+  },
+  "pixel-art": {
+    "prefix": "clean pixel art sprite, limited color palette, crisp hard edges, game-ready asset,",
+    "negative": "blurry pixels, anti-aliasing, photorealistic texture, watermark"
+  },
+  "item-icon": {
+    "prefix": "single centered game item icon, readable silhouette, transparent-background composition, polished inventory asset,",
+    "negative": "busy background, multiple objects, text, watermark"
+  },
+  "environment-concept": {
+    "prefix": "game environment concept art, clear foreground middle ground and background, production-friendly shapes,",
+    "negative": "text, watermark, muddy composition, distorted perspective"
+  }
+}

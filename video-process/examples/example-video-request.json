@@ -1,9 +1,0 @@
-{
-  "status": "demo",
-  "provider": "demo",
-  "model": "default",
-  "prompt": "A slow camera move through a neon city at night",
-  "duration_seconds": 5,
-  "aspect_ratio": "16:9",
-  "note": "A real provider will submit, poll, and download a video."
-}

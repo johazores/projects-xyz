@@ -1,4 +1,0 @@
-numpy>=1.26
-scipy>=1.11
-transformers>=4.47
-# Install torch separately for your operating system and GPU.

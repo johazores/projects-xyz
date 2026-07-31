@@ -1,0 +1,5 @@
+# Optional Bark text-to-audio provider.
+numpy>=1.26
+scipy>=1.11
+transformers>=4.47
+# Install a compatible torch build separately for your CPU or GPU.

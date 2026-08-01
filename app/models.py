@@ -116,3 +116,33 @@ class WorkflowView(BaseModel):
     description: str
     implemented: bool
     steps: list[str]
+
+
+class ThumbnailWorkflowRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+    prompt: str = Field(min_length=1, max_length=4_000)
+    project: str | None = Field(default=None, max_length=80)
+    model: str = Field(default="image.sana-1.6b-int4", max_length=120)
+    count: int = Field(default=4, ge=1, le=8)
+    width: int = Field(default=1024, ge=512, le=1536, multiple_of=32)
+    height: int = Field(default=576, ge=320, le=1024, multiple_of=32)
+    steps: int = Field(default=20, ge=1, le=50)
+    guidance: float = Field(default=4.5, ge=1, le=15)
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
+    negative_prompt: str = Field(
+        default="blurry, low quality, watermark, text, logo", max_length=4_000
+    )
+    vision_model: str | None = Field(
+        default="vision.florence-2-large", max_length=120
+    )
+    subject_path: str | None = Field(default=None, max_length=4_000)
+    background_model: str = Field(default="image.birefnet-lite", max_length=120)
+    upscale_model: str | None = Field(
+        default="image.realesrgan-ncnn", max_length=120
+    )
+    final_width: int = Field(default=1280, ge=640, le=3840)
+    final_height: int = Field(default=720, ge=360, le=2160)
+    text_position: Literal["auto", "left", "right", "top", "bottom"] = "auto"
+    font_path: str | None = Field(default=None, max_length=4_000)
+    text_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
+    accent_color: str = Field(default="#FFD400", pattern=r"^#[0-9A-Fa-f]{6}$")

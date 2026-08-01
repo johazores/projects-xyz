@@ -1,69 +1,47 @@
 @host = http://127.0.0.1:8000
 
-### Health and hardware
-GET {{host}}/health
+### Readiness and storage
+GET {{host}}/system/readiness
+GET {{host}}/system/storage
 
-### Models and workflows
-GET {{host}}/models
-GET {{host}}/workflows
+### Audio presets
+GET {{host}}/audio-ai/presets
 
-### Create cloned-voice consent
-POST {{host}}/voices/consents
-Content-Type: application/json
-
-{
-  "voice_name": "Channel host",
-  "owner_name": "Voice owner",
-  "reference_path": "C:/voices/host.wav",
-  "usage_scope": "Local narration and podcast production",
-  "confirmed": true
-}
-
-### Generate expressive speech
-POST {{host}}/audio-ai/speech
-Content-Type: application/json
-
-{
-  "text": "Welcome back to the channel [chuckle].",
-  "model": "speech.chatterbox-turbo",
-  "reference_path": "C:/voices/host.wav",
-  "consent_id": "REPLACE_CONSENT_ID",
-  "project": "episode-01"
-}
-
-### Generate ACE-Step music
+### Generate preset music
 POST {{host}}/audio-ai/music
 Content-Type: application/json
 
 {
-  "prompt": "calm futuristic documentary music, instrumental",
+  "prompt": "local AI creator episode",
+  "preset": "technology-bed",
   "duration": 30,
-  "instrumental": true,
   "project": "episode-01"
 }
 
-### Generate Stable Audio sound effect
+### Generate preset sound effect
 POST {{host}}/audio-ai/sound-effect
 Content-Type: application/json
 
 {
-  "prompt": "clean cinematic technology transition whoosh",
-  "duration": 3,
+  "prompt": "between two scenes",
+  "preset": "soft-transition",
   "project": "episode-01"
 }
 
-### Generate mixed AI Short
+### Generate resumable mixed AI Short
 POST {{host}}/workflows/youtube.ai-short
 Content-Type: application/json
 
 {
   "script": "This Short was created entirely with local open-source AI.",
   "project": "local-ai-short",
-  "music_prompt": "subtle futuristic electronic background music, instrumental",
+  "music_prompt": "local AI creator story",
+  "music_preset": "technology-bed",
   "scenes": [
     {
       "prompt": "a cinematic local AI workstation",
-      "sfx_prompt": "short digital interface whoosh"
+      "sfx_prompt": "scene transition",
+      "sfx_preset": "interface-whoosh"
     },
     {
       "prompt": "a vertical timeline filled with generated media"
@@ -73,37 +51,34 @@ Content-Type: application/json
   "fallback_to_stills": true
 }
 
-### Generate podcast episode
-POST {{host}}/workflows/youtube.podcast
+### List project runs
+GET {{host}}/projects/runs?project=local-ai-short
+
+### Inspect project run
+GET {{host}}/projects/runs/REPLACE_PROJECT_RUN_ID
+
+### Resume failed project run
+POST {{host}}/projects/runs/REPLACE_PROJECT_RUN_ID/resume
+
+### Preview project cleanup
+POST {{host}}/system/cleanup
 Content-Type: application/json
 
 {
-  "title": "Local AI Creator Podcast",
-  "project": "podcast-01",
-  "music_prompt": "soft technology podcast music, instrumental",
-  "segments": [
-    {
-      "speaker": "Host",
-      "text": "Welcome to the show.",
-      "tts_model": "speech.kokoro",
-      "voice": "af_heart"
-    },
-    {
-      "speaker": "Guest",
-      "text": "Thanks for having me.",
-      "tts_model": "speech.chatterbox-multilingual-v3",
-      "language": "en",
-      "reference_path": "C:/voices/guest.wav",
-      "consent_id": "REPLACE_CONSENT_ID"
-    }
-  ]
+  "project": "local-ai-short",
+  "include_project_runs": true
+}
+
+### Confirm project cleanup
+POST {{host}}/system/cleanup
+Content-Type: application/json
+
+{
+  "project": "local-ai-short",
+  "include_project_runs": true,
+  "dry_run": false,
+  "confirm": true
 }
 
 ### List jobs
 GET {{host}}/jobs
-
-### Get job
-GET {{host}}/jobs/REPLACE_JOB_ID
-
-### Cancel job
-DELETE {{host}}/jobs/REPLACE_JOB_ID

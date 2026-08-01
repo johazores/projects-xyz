@@ -9,21 +9,22 @@ The runtime targets one RTX 4060 Ti 8GB workstation. GPU-heavy jobs are serializ
 Runtime:
 
 - persistent SQLite job queue
+- resumable project runs with durable model checkpoints
 - one serialized GPU worker
 - automatic model swapping and unloading
 - progress, cancellation, restart recovery, and readable failures
-- GPU diagnostics and append-only benchmark history
+- GPU, disk, executable, and model readiness checks
+- dry-run-first project and cache cleanup
+- append-only benchmark history
 - reproducible workflow manifests
 - consent records for every cloned reference voice
 
 Local models and backends:
 
-- Kokoro, Bark, and faster-whisper
-- Chatterbox Turbo and Multilingual V3
-- ACE-Step 1.5 through its official localhost API
-- Stable Audio 3 Small-SFX through its official local CLI
-- Sana 1.6B INT4, SDXL inpainting, Florence-2, BiRefNet Lite, and Real-ESRGAN
-- LTX-Video through an external Q8 backend or the official Diffusers low-VRAM path
+- Kokoro, Bark, faster-whisper, and Chatterbox
+- ACE-Step music and Stable Audio Small-SFX
+- Sana, SDXL inpainting, Florence-2, BiRefNet, and Real-ESRGAN
+- LTX-Video through an external Q8 backend or the Diffusers low-VRAM path
 
 Creator workflows:
 
@@ -49,64 +50,62 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Optional capability groups
+## Resume a failed workflow
 
-Install only what you need after installing a compatible CUDA-enabled PyTorch build:
-
-```bash
-python -m pip install -r requirements-speech.txt
-python -m pip install -r requirements-image.txt
-python -m pip install -r requirements-vision.txt
-python -m pip install -r requirements-video.txt
-python -m pip install -r requirements-voices.txt
-```
-
-ACE-Step and Stable Audio 3 stay in their own official environments to avoid dependency conflicts. Configure their local endpoints or executables in `.env`:
-
-```env
-ACESTEP_API_URL=http://127.0.0.1:8001
-ACESTEP_API_KEY=
-STABLE_AUDIO_CLI=C:/models/stable-audio-3/.venv/Scripts/stable-audio.exe
-```
-
-## Create a mixed AI Short
+Every workflow job receives a `project_run_id`. Inspect and resume it with:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.ai-short \
+curl http://127.0.0.1:8000/projects/runs/PROJECT_RUN_ID
+curl -X POST http://127.0.0.1:8000/projects/runs/PROJECT_RUN_ID/resume
+```
+
+Completed model steps are reused only while their output artifacts still exist. Missing files cause that step to run again.
+
+## Readiness and cleanup
+
+```bash
+curl http://127.0.0.1:8000/system/readiness
+curl http://127.0.0.1:8000/system/storage
+```
+
+Cleanup previews are non-destructive by default:
+
+```bash
+curl -X POST http://127.0.0.1:8000/system/cleanup \
   -H "Content-Type: application/json" \
-  -d '{
-    "script": "This Short was created with local open-source AI.",
-    "project": "local-ai-short",
-    "music_prompt": "subtle futuristic electronic background music, instrumental",
-    "scenes": [
-      {
-        "prompt": "a cinematic local AI workstation",
-        "sfx_prompt": "short digital interface whoosh"
-      },
-      {
-        "prompt": "a vertical video timeline filled with generated media"
-      }
-    ],
-    "use_motion": true,
-    "fallback_to_stills": true
-  }'
+  -d '{"project":"local-ai-short","include_project_runs":true}'
 ```
 
-The workflow creates narration, scene images, optional LTX motion, optional ACE-Step music, optional Stable Audio sound effects, subtitles, a mixed vertical MP4, audio validation, and a manifest.
+Run the same request with `"dry_run": false, "confirm": true` only after reviewing the returned paths. Active projects are always rejected.
+
+## Audio presets
+
+```bash
+curl http://127.0.0.1:8000/audio-ai/presets
+```
+
+Music and sound-effect requests accept preset names such as `technology-bed`, `documentary-bed`, `interface-whoosh`, and `soft-transition`.
 
 ## Main API groups
 
 ```text
 /jobs          queued work and status
+/projects      durable workflow runs and resume controls
 /models        model availability and unloading
 /workflows     complete creator pipelines
-/system        GPU details and benchmark history
+/system        readiness, storage, cleanup, GPU, and benchmarks
 /voices        cloned-voice consent records
-/audio-ai      queued speech, music, and sound effects
+/audio-ai      queued speech, music, sound effects, and presets
 /audio         direct audio utilities
 /image         queued image jobs and presets
 /video         queued LTX generation and FFmpeg utilities
 /outputs       generated local artifacts
+```
+
+## Validation
+
+```bash
+python -m unittest -v tests.test_project_reliability
 ```
 
 ## Documentation
@@ -118,4 +117,4 @@ The workflow creates narration, scene images, optional LTX motion, optional ACE-
 
 ## License
 
-Application source: MIT. Model weights, custom kernels, and third-party executables retain their own licenses. Review the license of every downloaded model before publishing or monetizing generated work.
+Application source: MIT. Model weights, custom kernels, and third-party executables retain their own licenses. Review each model license before publishing or monetizing generated work.

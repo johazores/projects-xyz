@@ -1,0 +1,38 @@
+{
+  "documentary-bed": {
+    "kind": "music",
+    "prompt_prefix": "restrained documentary underscore, instrumental,",
+    "prompt_suffix": "subtle dynamics, no dominant melody, clean ending",
+    "defaults": {"instrumental": true, "bpm": 82}
+  },
+  "technology-bed": {
+    "kind": "music",
+    "prompt_prefix": "modern technology background music, instrumental,",
+    "prompt_suffix": "soft electronic pulse, polished, voiceover-friendly",
+    "defaults": {"instrumental": true, "bpm": 96}
+  },
+  "podcast-intro": {
+    "kind": "music",
+    "prompt_prefix": "short professional podcast intro, instrumental,",
+    "prompt_suffix": "confident opening, clean resolved ending",
+    "defaults": {"instrumental": true, "duration": 15}
+  },
+  "interface-whoosh": {
+    "kind": "sound-effect",
+    "prompt_prefix": "clean digital interface whoosh,",
+    "prompt_suffix": "short, crisp, no music, no voice",
+    "defaults": {"duration": 2}
+  },
+  "soft-transition": {
+    "kind": "sound-effect",
+    "prompt_prefix": "soft cinematic transition sweep,",
+    "prompt_suffix": "brief, controlled low end, no music, no voice",
+    "defaults": {"duration": 3}
+  },
+  "notification-chime": {
+    "kind": "sound-effect",
+    "prompt_prefix": "friendly modern notification chime,",
+    "prompt_suffix": "single concise event, no ambience, no voice",
+    "defaults": {"duration": 2}
+  }
+}

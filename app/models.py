@@ -178,6 +178,8 @@ class ShortScene(BaseModel):
     image_path: str | None = Field(default=None, max_length=4_000)
     duration: float | None = Field(default=None, ge=1, le=20)
     animate: bool = True
+    sfx_prompt: str | None = Field(default=None, max_length=1_000)
+    sfx_volume: float = Field(default=0.35, ge=0, le=2)
 
 
 class AiShortWorkflowRequest(BaseModel):
@@ -186,6 +188,11 @@ class AiShortWorkflowRequest(BaseModel):
     project: str | None = Field(default=None, max_length=80)
     narration_model: str = Field(default="speech.kokoro", max_length=120)
     voice: str = Field(default="af_heart", max_length=120)
+    narration_language: str = Field(default="en", max_length=20)
+    narration_reference_path: str | None = Field(default=None, max_length=4_000)
+    narration_consent_id: str | None = Field(default=None, max_length=120)
+    narration_exaggeration: float | None = Field(default=None, ge=0, le=2)
+    narration_cfg_weight: float | None = Field(default=None, ge=0, le=2)
     image_model: str = Field(default="image.sana-1.6b-int4", max_length=120)
     video_model: str = Field(default="video.ltx-q8", max_length=120)
     transcription_model: str | None = Field(default="speech.faster-whisper", max_length=120)
@@ -201,3 +208,80 @@ class AiShortWorkflowRequest(BaseModel):
     final_height: int = Field(default=1920, ge=960, le=3840)
     fps: int = Field(default=30, ge=12, le=60)
     burn_subtitles: bool = False
+    music_prompt: str | None = Field(default=None, max_length=2_000)
+    music_model: str = Field(default="music.ace-step-1.5", max_length=120)
+    music_volume: float = Field(default=0.12, ge=0, le=1)
+    sfx_model: str = Field(default="audio.stable-audio-small-sfx", max_length=120)
+
+
+class MusicGenerateRequest(ProjectRequest):
+    prompt: str = Field(min_length=1, max_length=4_000)
+    model: str = Field(default="music.ace-step-1.5", max_length=120)
+    duration: float = Field(default=30, ge=10, le=600)
+    lyrics: str = Field(default="", max_length=12_000)
+    instrumental: bool = True
+    language: str = Field(default="en", max_length=20)
+    bpm: int | None = Field(default=None, ge=30, le=300)
+    key_scale: str | None = Field(default=None, max_length=40)
+    steps: int = Field(default=8, ge=1, le=20)
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
+
+
+class ExpressiveSpeechRequest(ProjectRequest):
+    text: str = Field(min_length=1, max_length=12_000)
+    model: str = Field(default="speech.chatterbox-turbo", max_length=120)
+    language: str = Field(default="en", max_length=20)
+    reference_path: str | None = Field(default=None, max_length=4_000)
+    consent_id: str | None = Field(default=None, max_length=120)
+    exaggeration: float | None = Field(default=None, ge=0, le=2)
+    cfg_weight: float | None = Field(default=None, ge=0, le=2)
+
+
+class SoundEffectRequest(ProjectRequest):
+    prompt: str = Field(min_length=1, max_length=2_000)
+    model: str = Field(default="audio.stable-audio-small-sfx", max_length=120)
+    duration: float = Field(default=4, ge=0.5, le=120)
+
+
+class VoiceConsentCreate(BaseModel):
+    voice_name: str = Field(min_length=1, max_length=120)
+    owner_name: str = Field(min_length=1, max_length=160)
+    reference_path: str = Field(min_length=1, max_length=4_000)
+    usage_scope: str = Field(min_length=1, max_length=500)
+    confirmed: bool
+    notes: str | None = Field(default=None, max_length=1_000)
+
+
+class VoiceConsentView(BaseModel):
+    id: str
+    voice_name: str
+    owner_name: str
+    reference_path: str
+    reference_sha256: str
+    usage_scope: str
+    notes: str | None = None
+    created_at: datetime
+    revoked_at: datetime | None = None
+
+
+class PodcastSegment(BaseModel):
+    speaker: str = Field(min_length=1, max_length=120)
+    text: str = Field(min_length=1, max_length=8_000)
+    tts_model: str | None = Field(default=None, max_length=120)
+    voice: str | None = Field(default=None, max_length=120)
+    language: str = Field(default="en", max_length=20)
+    reference_path: str | None = Field(default=None, max_length=4_000)
+    consent_id: str | None = Field(default=None, max_length=120)
+    pause_after: float = Field(default=0.35, ge=0, le=5)
+
+
+class PodcastWorkflowRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    segments: list[PodcastSegment] = Field(min_length=1, max_length=100)
+    project: str | None = Field(default=None, max_length=80)
+    narration_model: str = Field(default="speech.kokoro", max_length=120)
+    default_voice: str = Field(default="af_heart", max_length=120)
+    music_prompt: str | None = Field(default=None, max_length=2_000)
+    music_model: str = Field(default="music.ace-step-1.5", max_length=120)
+    music_volume: float = Field(default=0.08, ge=0, le=1)
+    normalize: bool = True

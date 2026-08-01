@@ -66,8 +66,24 @@ class FakeJobStore:
         self.jobs[job.id] = job
         return job
 
-    def request_cancel(self, job_id: str) -> FakeJob:
+    def get(self, job_id: str) -> FakeJob:
         return self.jobs[job_id]
+
+    def request_cancel(self, job_id: str) -> FakeJob:
+        self.jobs[job_id].cancel_requested = True
+        return self.jobs[job_id]
+
+    def cancel_requested(self, job_id: str) -> bool:
+        return bool(getattr(self.jobs[job_id], "cancel_requested", False))
+
+    def update(self, job_id: str, **values) -> FakeJob:
+        job = self.jobs[job_id]
+        for key, value in values.items():
+            if key in {"started", "finished"}:
+                continue
+            if value is not None:
+                setattr(job, key, value)
+        return job
 
     def recover_pending(self) -> list[str]:
         return []
@@ -82,10 +98,12 @@ class ProjectReliabilityTests(unittest.TestCase):
             artifact = root / "output.txt"
             manager = FakeManager(artifact)
             proxy = ResumableModelManager(manager, projects, str(run["id"]))
+
             proxy.run("music.test", {"prompt": "hello"}, lambda *_: None)
             reused = proxy.run("music.test", {"prompt": "hello"}, lambda *_: None)
             self.assertEqual(manager.calls, 1)
             self.assertTrue(reused["checkpoint_reused"])
+
             artifact.unlink()
             proxy.run("music.test", {"prompt": "hello"}, lambda *_: None)
             self.assertEqual(manager.calls, 2)
@@ -96,45 +114,119 @@ class ProjectReliabilityTests(unittest.TestCase):
             output = root / "outputs"
             data = root / "data"
             cache = root / "cache"
-            output.mkdir(); data.mkdir(); cache.mkdir()
+            output.mkdir()
+            data.mkdir()
+            cache.mkdir()
             projects = ProjectStore(data / "projects")
             run = projects.create("youtube.test", {"project": "demo"})
             project_dir = output / "demo"
             project_dir.mkdir()
             (project_dir / "asset.bin").write_bytes(b"content")
-            settings = SimpleNamespace(output_dir=output, data_dir=data, model_cache_dir=cache, min_disk_free_gb=0)
+            settings = SimpleNamespace(
+                output_dir=output,
+                data_dir=data,
+                model_cache_dir=cache,
+                min_disk_free_gb=0,
+            )
+
             projects.start(str(run["id"]))
             with self.assertRaises(MediaError):
-                cleanup(settings=settings, projects=projects, project="demo", older_than_days=None, include_project_runs=False, include_model_cache=False, dry_run=True, confirm=False)
+                cleanup(
+                    settings=settings,
+                    projects=projects,
+                    project="demo",
+                    older_than_days=None,
+                    include_project_runs=False,
+                    include_model_cache=False,
+                    dry_run=True,
+                    confirm=False,
+                )
+
             projects.fail(str(run["id"]), "expected test failure")
-            preview = cleanup(settings=settings, projects=projects, project="demo", older_than_days=None, include_project_runs=True, include_model_cache=False, dry_run=True, confirm=False)
+            preview = cleanup(
+                settings=settings,
+                projects=projects,
+                project="demo",
+                older_than_days=None,
+                include_project_runs=True,
+                include_model_cache=False,
+                dry_run=True,
+                confirm=False,
+            )
             self.assertTrue(project_dir.exists())
             self.assertIn(str(project_dir), preview["paths"])
-            cleanup(settings=settings, projects=projects, project="demo", older_than_days=None, include_project_runs=True, include_model_cache=False, dry_run=False, confirm=True)
+
+            cleanup(
+                settings=settings,
+                projects=projects,
+                project="demo",
+                older_than_days=None,
+                include_project_runs=True,
+                include_model_cache=False,
+                dry_run=False,
+                confirm=True,
+            )
             self.assertFalse(project_dir.exists())
 
     def test_model_cache_cleanup_preserves_configured_root(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            output = root / "outputs"; data = root / "data"; cache = root / "cache"
-            output.mkdir(); data.mkdir(); cache.mkdir()
+            output = root / "outputs"
+            data = root / "data"
+            cache = root / "cache"
+            output.mkdir()
+            data.mkdir()
+            cache.mkdir()
             (cache / "model.bin").write_bytes(b"model")
-            settings = SimpleNamespace(output_dir=output, data_dir=data, model_cache_dir=cache, min_disk_free_gb=0)
+            settings = SimpleNamespace(
+                output_dir=output,
+                data_dir=data,
+                model_cache_dir=cache,
+                min_disk_free_gb=0,
+            )
             projects = ProjectStore(data / "projects")
-            cleanup(settings=settings, projects=projects, project=None, older_than_days=None, include_project_runs=False, include_model_cache=True, dry_run=False, confirm=True)
+
+            cleanup(
+                settings=settings,
+                projects=projects,
+                project=None,
+                older_than_days=None,
+                include_project_runs=False,
+                include_model_cache=True,
+                dry_run=False,
+                confirm=True,
+            )
             self.assertTrue(cache.exists())
             self.assertEqual(list(cache.iterdir()), [])
 
     def test_audio_presets_validate_capability(self) -> None:
         with TemporaryDirectory() as temporary:
             path = Path(temporary) / "audio-presets.json"
-            path.write_text(json.dumps({"technology": {"kind": "music", "prompt_prefix": "modern", "prompt_suffix": "clean", "defaults": {"bpm": 90}}}), encoding="utf-8")
+            path.write_text(
+                json.dumps(
+                    {
+                        "technology": {
+                            "kind": "music",
+                            "prompt_prefix": "modern",
+                            "prompt_suffix": "clean",
+                            "defaults": {"bpm": 90},
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
             presets = AudioPresetStore(path)
-            applied = presets.apply("music.ace-step-1.5", {"prompt": "studio", "preset": "technology"})
+            applied = presets.apply(
+                "music.ace-step-1.5",
+                {"prompt": "studio", "preset": "technology"},
+            )
             self.assertEqual(applied["prompt"], "modern studio clean")
             self.assertEqual(applied["bpm"], 90)
             with self.assertRaises(MediaError):
-                presets.apply("audio.stable-audio-small-sfx", {"prompt": "click", "preset": "technology"})
+                presets.apply(
+                    "audio.stable-audio-small-sfx",
+                    {"prompt": "click", "preset": "technology"},
+                )
 
     def test_resume_uses_the_same_project_run(self) -> None:
         with TemporaryDirectory() as temporary:
@@ -142,20 +234,56 @@ class ProjectReliabilityTests(unittest.TestCase):
             presets_path = root / "audio-presets.json"
             presets_path.write_text("{}", encoding="utf-8")
             projects = ProjectStore(root / "projects")
-            worker = JobWorker(FakeJobStore(), FakeManager(root / "output.txt"), projects, AudioPresetStore(presets_path))
-            job = worker.submit("workflow", "youtube.test", {"project": "resume-demo", "prompt": "hello"})
+            worker = JobWorker(
+                FakeJobStore(),
+                FakeManager(root / "output.txt"),
+                projects,
+                AudioPresetStore(presets_path),
+            )
+            job = worker.submit(
+                "workflow",
+                "youtube.test",
+                {"project": "resume-demo", "prompt": "hello"},
+            )
             run_id = str(job.payload["_run_id"])
             projects.fail(run_id, "expected")
             resumed = worker.resume(run_id)
             self.assertEqual(resumed.payload["_run_id"], run_id)
             self.assertEqual(projects.get(run_id)["status"], "queued")
 
+    def test_prestart_cancellation_closes_project_run(self) -> None:
+        with TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            presets_path = root / "audio-presets.json"
+            presets_path.write_text("{}", encoding="utf-8")
+            store = FakeJobStore()
+            projects = ProjectStore(root / "projects")
+            worker = JobWorker(
+                store,
+                FakeManager(root / "output.txt"),
+                projects,
+                AudioPresetStore(presets_path),
+            )
+            job = worker.submit("workflow", "youtube.test", {"project": "cancel-demo"})
+            run_id = str(job.payload["_run_id"])
+            worker.cancel(job.id)
+            worker._run(job.id)
+            self.assertEqual(projects.get(run_id)["status"], "cancelled")
+            self.assertNotIn("cancel-demo", projects.active_projects())
+
     def test_readiness_includes_storage_and_models(self) -> None:
         with TemporaryDirectory() as temporary:
             root = Path(temporary)
-            output = root / "outputs"; data = root / "data"
-            output.mkdir(); data.mkdir()
-            settings = SimpleNamespace(output_dir=output, data_dir=data, model_cache_dir=None, min_disk_free_gb=0)
+            output = root / "outputs"
+            data = root / "data"
+            output.mkdir()
+            data.mkdir()
+            settings = SimpleNamespace(
+                output_dir=output,
+                data_dir=data,
+                model_cache_dir=None,
+                min_disk_free_gb=0,
+            )
             snapshot = readiness_snapshot(settings, FakeRegistry())
             self.assertIn("disk_headroom", snapshot["checks"])
             self.assertEqual(snapshot["checks"]["models"]["available"], 1)

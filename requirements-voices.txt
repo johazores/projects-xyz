@@ -1,0 +1,3 @@
+# Chatterbox is tested by its maintainers on Python 3.11.
+# Install a CUDA-enabled torch/torchaudio pair separately when using the GPU.
+chatterbox-tts>=0.1.2,<1

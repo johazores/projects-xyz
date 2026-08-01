@@ -1,18 +1,24 @@
 # Roadmap
 
-Only add features that improve a real local workflow.
+The toolkit grows by completing useful creator workflows, not by adding untested provider names.
 
-## Next useful additions
+## Current
 
-- Replace the image prompt-card provider with one tested local provider, preferably ComfyUI.
-- Add Piper as a lightweight local text-to-speech option.
-- Add image upscaling after a real image provider is connected.
-- Add image-to-video only when a tested local or cloud provider is selected.
+- Persistent local job queue
+- One-model GPU lifecycle
+- Kokoro, faster-whisper, and Bark adapters
+- YouTube narration workflow
+- Social clip preparation workflow
 
-## Add later only when needed
+## Next
 
-- Background jobs for long-running generation.
-- Persistent model loading when startup time becomes a measured problem.
-- A small local web interface.
-- Database-backed asset history.
-- Authentication or cloud deployment.
+1. Sana 1.5 INT4 image generation
+2. SDXL inpainting
+3. Florence-2 visual analysis
+4. BiRefNet and Real-ESRGAN
+5. Complete thumbnail workflow
+6. LTX-VideoQ8 short video generation
+7. Complete AI Shorts workflow
+8. ACE-Step music and local SFX
+
+See [implementation-checklist.md](implementation-checklist.md) for detailed progress.

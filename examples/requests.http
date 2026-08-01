@@ -1,52 +1,60 @@
-@base = http://127.0.0.1:8000
+@host = http://127.0.0.1:8000
 
-GET {{base}}/health
+### Health
+GET {{host}}/health
 
-### Generate a local demo tone
-POST {{base}}/audio/generate
+### Models
+GET {{host}}/models
+
+### Workflows
+GET {{host}}/workflows
+
+### Queue Kokoro narration
+POST {{host}}/workflows/youtube.narration
 Content-Type: application/json
 
 {
-  "prompt": "menu confirmation sound",
-  "provider": "demo",
-  "project": "game-prototype"
+  "text": "Welcome to my local AI media studio.",
+  "project": "channel-intro",
+  "model": "speech.kokoro",
+  "voice": "af_heart",
+  "normalize": true
 }
 
-### Clean spoken audio
-POST {{base}}/audio/enhance
+### Queue social clip preparation
+POST {{host}}/workflows/youtube.social-clip-prep
 Content-Type: application/json
 
 {
-  "input_path": "C:/media/narration.wav",
-  "project": "youtube-episode-01"
-}
-
-### Create subtitles
-POST {{base}}/audio/transcribe
-Content-Type: application/json
-
-{
-  "input_path": "C:/media/episode.mp4",
-  "output_format": "srt",
-  "project": "youtube-episode-01"
-}
-
-### Generate an image prompt card using a preset
-POST {{base}}/image/generate
-Content-Type: application/json
-
-{
-  "prompt": "a mysterious forest guardian",
-  "preset": "character-portrait",
-  "project": "game-prototype"
-}
-
-### Resize for a short
-POST {{base}}/video/resize
-Content-Type: application/json
-
-{
-  "input_path": "C:/media/clip.mp4",
+  "input_path": "C:/videos/source.mp4",
+  "project": "episode-12",
   "preset": "shorts",
-  "project": "youtube-episode-01"
+  "transcribe": true,
+  "extract_fps": 0.2
 }
+
+### Queue a direct transcription model job
+POST {{host}}/jobs
+Content-Type: application/json
+
+{
+  "kind": "model",
+  "target": "speech.faster-whisper",
+  "payload": {
+    "input_path": "C:/videos/source.mp4",
+    "output_format": "srt",
+    "project": "episode-12"
+  }
+}
+
+### List jobs
+GET {{host}}/jobs
+
+### Get job
+GET {{host}}/jobs/REPLACE_JOB_ID
+
+### Cancel job
+DELETE {{host}}/jobs/REPLACE_JOB_ID
+
+### Unload active model
+POST {{host}}/models/unload

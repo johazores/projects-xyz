@@ -1,4 +1,4 @@
-"""Small environment-based configuration with local defaults."""
+"""Environment-based settings for the local studio."""
 
 from __future__ import annotations
 
@@ -21,7 +21,16 @@ class Settings:
     output_dir: Path = Path(
         os.getenv("MEDIA_API_OUTPUT_DIR", str(ROOT_DIR / "outputs"))
     ).expanduser().resolve()
+    data_dir: Path = Path(
+        os.getenv("MEDIA_API_DATA_DIR", str(ROOT_DIR / "data"))
+    ).expanduser().resolve()
+    models_file: Path = Path(
+        os.getenv("MEDIA_MODELS_FILE", str(ROOT_DIR / "models.json"))
+    ).expanduser().resolve()
     presets_file: Path = ROOT_DIR / "presets.json"
+    database_path: Path = Path(
+        os.getenv("MEDIA_JOBS_DATABASE", str(ROOT_DIR / "data" / "jobs.db"))
+    ).expanduser().resolve()
     audio_model: str = os.getenv("MEDIA_AUDIO_MODEL", "suno/bark-small")
     audio_device: str = os.getenv("MEDIA_AUDIO_DEVICE", "auto")
     transcription_model: str = os.getenv("MEDIA_TRANSCRIPTION_MODEL", "small")

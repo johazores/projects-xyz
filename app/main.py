@@ -1,7 +1,8 @@
-"""FastAPI entry point for the local toolkit."""
+"""FastAPI entry point for the local AI content studio."""
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI, Request
@@ -9,11 +10,14 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import audio, image, video
+from app.routes import audio, image, jobs, models as model_routes, video, workflows
+from app.runtime.state import models, registry, worker
 from app.services.video import VIDEO_PRESETS
 from app.utils.files import MediaError
 
-for media_type in ("audio", "image", "video"):
+for directory in (settings.output_dir, settings.data_dir):
+    directory.mkdir(parents=True, exist_ok=True)
+for media_type in ("audio", "image", "video", "workflow"):
     (settings.output_dir / media_type).mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
@@ -21,15 +25,23 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    worker.start()
+    yield
+    worker.stop()
+
+
 app = FastAPI(
     title=settings.app_name,
-    version="1.0.0",
-    description="One lightweight local API for audio, image, and video workflows.",
+    version="1.1.0",
+    description="Local-first AI content creation studio with a serialized GPU job queue.",
+    lifespan=lifespan,
 )
 app.mount("/outputs", StaticFiles(directory=settings.output_dir), name="outputs")
-app.include_router(audio.router)
-app.include_router(image.router)
-app.include_router(video.router)
+for router in (audio.router, image.router, video.router, jobs.router, model_routes.router, workflows.router):
+    app.include_router(router)
 
 
 @app.exception_handler(FileNotFoundError)
@@ -48,8 +60,13 @@ def root() -> dict[str, str]:
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "worker_running": worker.running,
+        "queued_jobs": worker.queue.qsize(),
+        "active_model": models.active_id,
+    }
 
 
 @app.get("/capabilities")
@@ -58,10 +75,9 @@ def capabilities() -> dict[str, object]:
         "audio": ["generate", "convert", "normalize", "enhance", "trim", "transcribe"],
         "image": ["generate", "generate-batch", "remove-background", "presets"],
         "video": ["generate", "resize", "frames"],
-        "providers": {
-            "audio": ["demo", "bark"],
-            "image": ["demo"],
-            "video": ["demo"],
-        },
+        "jobs": ["submit", "status", "list", "cancel"],
+        "models": [spec.id for spec in registry.list() if spec.implemented],
+        "planned_models": [spec.id for spec in registry.list() if not spec.implemented],
+        "workflows": ["youtube.narration", "youtube.social-clip-prep"],
         "video_presets": VIDEO_PRESETS,
     }

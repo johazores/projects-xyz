@@ -17,16 +17,29 @@ class GenerateRequest(ProjectRequest):
     provider: str = Field(default="demo", min_length=1, max_length=100)
 
 
-class ImageGenerateRequest(GenerateRequest):
+class ImageGenerateRequest(ProjectRequest):
+    prompt: str = Field(min_length=1, max_length=4_000)
+    model: str = Field(default="image.sana-1.6b-int4", min_length=1, max_length=120)
     negative_prompt: str | None = Field(default=None, max_length=4_000)
     preset: str | None = Field(default=None, max_length=100)
+    count: int = Field(default=1, ge=1, le=8)
+    width: int = Field(default=1024, ge=256, le=1536, multiple_of=32)
+    height: int = Field(default=576, ge=256, le=1536, multiple_of=32)
+    steps: int = Field(default=20, ge=1, le=50)
+    guidance: float = Field(default=4.5, ge=1, le=15)
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
 
 
 class ImageBatchRequest(ProjectRequest):
     prompts: list[str] = Field(min_length=1, max_length=100)
-    provider: str = Field(default="demo", min_length=1, max_length=100)
+    model: str = Field(default="image.sana-1.6b-int4", min_length=1, max_length=120)
     negative_prompt: str | None = Field(default=None, max_length=4_000)
     preset: str | None = Field(default=None, max_length=100)
+    width: int = Field(default=1024, ge=256, le=1536, multiple_of=32)
+    height: int = Field(default=576, ge=256, le=1536, multiple_of=32)
+    steps: int = Field(default=20, ge=1, le=50)
+    guidance: float = Field(default=4.5, ge=1, le=15)
+    seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
 
 
 class LocalFileRequest(ProjectRequest):
@@ -47,7 +60,24 @@ class AudioTranscribeRequest(LocalFileRequest):
 
 
 class ImageBackgroundRequest(LocalFileRequest):
-    model: str = Field(default="u2net", min_length=1, max_length=100)
+    model: str = Field(default="image.birefnet-lite", min_length=1, max_length=120)
+
+
+class VideoGenerateRequest(ProjectRequest):
+    prompt: str = Field(min_length=1, max_length=4_000)
+    model: str = Field(default="video.ltx-q8", min_length=1, max_length=120)
+    negative_prompt: str = Field(
+        default="worst quality, inconsistent motion, blurry, jittery, distorted, watermark, text",
+        max_length=4_000,
+    )
+    input_path: str | None = Field(default=None, max_length=4_000)
+    width: int = Field(default=576, ge=256, le=768, multiple_of=32)
+    height: int = Field(default=320, ge=256, le=768, multiple_of=32)
+    num_frames: int = Field(default=65, ge=9, le=121)
+    steps: int = Field(default=20, ge=4, le=50)
+    fps: int = Field(default=24, ge=8, le=30)
+    seed: int = Field(default=42, ge=0, le=2_147_483_647)
+    allow_low_vram_retry: bool = True
 
 
 class VideoResizeRequest(LocalFileRequest):
@@ -129,20 +159,45 @@ class ThumbnailWorkflowRequest(BaseModel):
     steps: int = Field(default=20, ge=1, le=50)
     guidance: float = Field(default=4.5, ge=1, le=15)
     seed: int | None = Field(default=None, ge=0, le=2_147_483_647)
-    negative_prompt: str = Field(
-        default="blurry, low quality, watermark, text, logo", max_length=4_000
-    )
-    vision_model: str | None = Field(
-        default="vision.florence-2-large", max_length=120
-    )
+    negative_prompt: str = Field(default="blurry, low quality, watermark, text, logo", max_length=4_000)
+    vision_model: str | None = Field(default="vision.florence-2-large", max_length=120)
     subject_path: str | None = Field(default=None, max_length=4_000)
     background_model: str = Field(default="image.birefnet-lite", max_length=120)
-    upscale_model: str | None = Field(
-        default="image.realesrgan-ncnn", max_length=120
-    )
+    upscale_model: str | None = Field(default="image.realesrgan-ncnn", max_length=120)
     final_width: int = Field(default=1280, ge=640, le=3840)
     final_height: int = Field(default=720, ge=360, le=2160)
     text_position: Literal["auto", "left", "right", "top", "bottom"] = "auto"
     font_path: str | None = Field(default=None, max_length=4_000)
     text_color: str = Field(default="#FFFFFF", pattern=r"^#[0-9A-Fa-f]{6}$")
     accent_color: str = Field(default="#FFD400", pattern=r"^#[0-9A-Fa-f]{6}$")
+
+
+class ShortScene(BaseModel):
+    prompt: str = Field(min_length=1, max_length=2_000)
+    text: str | None = Field(default=None, max_length=2_000)
+    image_path: str | None = Field(default=None, max_length=4_000)
+    duration: float | None = Field(default=None, ge=1, le=20)
+    animate: bool = True
+
+
+class AiShortWorkflowRequest(BaseModel):
+    script: str = Field(min_length=1, max_length=12_000)
+    scenes: list[ShortScene] = Field(min_length=1, max_length=12)
+    project: str | None = Field(default=None, max_length=80)
+    narration_model: str = Field(default="speech.kokoro", max_length=120)
+    voice: str = Field(default="af_heart", max_length=120)
+    image_model: str = Field(default="image.sana-1.6b-int4", max_length=120)
+    video_model: str = Field(default="video.ltx-q8", max_length=120)
+    transcription_model: str | None = Field(default="speech.faster-whisper", max_length=120)
+    use_motion: bool = True
+    fallback_to_stills: bool = True
+    image_width: int = Field(default=576, ge=512, le=1024, multiple_of=32)
+    image_height: int = Field(default=1024, ge=512, le=1024, multiple_of=32)
+    video_width: int = Field(default=320, ge=256, le=768, multiple_of=32)
+    video_height: int = Field(default=576, ge=256, le=768, multiple_of=32)
+    video_frames: int = Field(default=65, ge=9, le=121)
+    video_steps: int = Field(default=20, ge=4, le=50)
+    final_width: int = Field(default=1080, ge=540, le=2160)
+    final_height: int = Field(default=1920, ge=960, le=3840)
+    fps: int = Field(default=30, ge=12, le=60)
+    burn_subtitles: bool = False

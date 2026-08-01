@@ -37,12 +37,12 @@ Source of truth for the local AI content studio targeting an RTX 4060 Ti 8GB.
 
 ## Phase 4 — Music, sound, and expressive voices
 
-- [ ] Implement ACE-Step 1.5 using INT8 and CPU offload.
-- [ ] Implement local sound-effect generation.
-- [ ] Add Chatterbox as an expressive and multilingual TTS option.
-- [ ] Add consent records for cloned voices.
+- [x] Integrate ACE-Step 1.5 through its official local REST server with the 8GB profile documented.
+- [x] Integrate Stable Audio 3 Small-SFX through its official local CLI.
+- [x] Add Chatterbox Turbo and Multilingual V3 as expressive local TTS options.
+- [x] Add revocable, reference-file-bound consent records for cloned voices.
 - [ ] Add music, ambience, transition, and SFX presets.
-- [ ] Add loudness, clipping, and target-duration validation.
+- [x] Add duration, loudness, and clipping-risk validation for final audio.
 
 ## Phase 5 — Creator workflows
 
@@ -53,7 +53,7 @@ Source of truth for the local AI content studio targeting an RTX 4060 Ti 8GB.
 - [ ] Storytelling and comic workflow.
 - [ ] Product showcase workflow.
 - [ ] Educational and tech tutorial workflow.
-- [ ] Podcast workflow.
+- [x] Podcast workflow.
 - [ ] Long-video-to-social-clips workflow with highlight selection.
 
 ## Phase 6 — Reliability and usability

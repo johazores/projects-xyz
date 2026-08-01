@@ -1,107 +1,102 @@
 @host = http://127.0.0.1:8000
 
-### Health
+### Health and hardware
 GET {{host}}/health
 
-### GPU diagnostics
-GET {{host}}/system/gpu
-
-### Benchmark history
-GET {{host}}/system/benchmarks
-
-### Models
+### Models and workflows
 GET {{host}}/models
-
-### Workflows
 GET {{host}}/workflows
 
-### Queue direct Sana generation
-POST {{host}}/image/generate
+### Create cloned-voice consent
+POST {{host}}/voices/consents
 Content-Type: application/json
 
 {
-  "prompt": "a cinematic local AI workstation",
-  "project": "image-test",
-  "count": 2,
-  "width": 1024,
-  "height": 576,
-  "seed": 42
+  "voice_name": "Channel host",
+  "owner_name": "Voice owner",
+  "reference_path": "C:/voices/host.wav",
+  "usage_scope": "Local narration and podcast production",
+  "confirmed": true
 }
 
-### Queue multiple image prompts
-POST {{host}}/image/generate-batch
+### Generate expressive speech
+POST {{host}}/audio-ai/speech
 Content-Type: application/json
 
 {
-  "prompts": [
-    "a cinematic local AI workstation",
-    "a vertical video editing timeline"
-  ],
-  "project": "image-batch",
-  "width": 576,
-  "height": 1024,
-  "seed": 100
+  "text": "Welcome back to the channel [chuckle].",
+  "model": "speech.chatterbox-turbo",
+  "reference_path": "C:/voices/host.wav",
+  "consent_id": "REPLACE_CONSENT_ID",
+  "project": "episode-01"
 }
 
-### Queue LTX text-to-video
-POST {{host}}/video/generate
+### Generate ACE-Step music
+POST {{host}}/audio-ai/music
 Content-Type: application/json
 
 {
-  "prompt": "slow cinematic movement through a futuristic local AI studio",
-  "project": "video-test",
-  "width": 576,
-  "height": 320,
-  "num_frames": 65,
-  "steps": 20,
-  "seed": 42
+  "prompt": "calm futuristic documentary music, instrumental",
+  "duration": 30,
+  "instrumental": true,
+  "project": "episode-01"
 }
 
-### Queue LTX image-to-video
-POST {{host}}/video/generate
+### Generate Stable Audio sound effect
+POST {{host}}/audio-ai/sound-effect
 Content-Type: application/json
 
 {
-  "prompt": "subtle camera push-in and natural screen glow",
-  "input_path": "C:/images/scene.png",
-  "project": "video-test",
-  "width": 320,
-  "height": 576,
-  "num_frames": 65,
-  "steps": 20
+  "prompt": "clean cinematic technology transition whoosh",
+  "duration": 3,
+  "project": "episode-01"
 }
 
-### Queue AI Short workflow
+### Generate mixed AI Short
 POST {{host}}/workflows/youtube.ai-short
 Content-Type: application/json
 
 {
-  "script": "This complete short is prepared using local open-source AI models.",
+  "script": "This Short was created entirely with local open-source AI.",
   "project": "local-ai-short",
+  "music_prompt": "subtle futuristic electronic background music, instrumental",
   "scenes": [
     {
-      "prompt": "a developer using a powerful local AI workstation",
-      "text": "Start with a local script and narration"
+      "prompt": "a cinematic local AI workstation",
+      "sfx_prompt": "short digital interface whoosh"
     },
     {
-      "prompt": "a vertical video timeline filled with generated images",
-      "text": "Then assemble the final Short"
+      "prompt": "a vertical timeline filled with generated media"
     }
   ],
   "use_motion": true,
   "fallback_to_stills": true
 }
 
-### Queue thumbnail workflow
-POST {{host}}/workflows/youtube.thumbnail
+### Generate podcast episode
+POST {{host}}/workflows/youtube.podcast
 Content-Type: application/json
 
 {
-  "title": "BUILD AI VIDEOS LOCALLY",
-  "prompt": "a creator in a futuristic local AI video studio, dramatic lighting, empty space on the left",
-  "project": "local-ai-video",
-  "count": 4,
-  "seed": 42
+  "title": "Local AI Creator Podcast",
+  "project": "podcast-01",
+  "music_prompt": "soft technology podcast music, instrumental",
+  "segments": [
+    {
+      "speaker": "Host",
+      "text": "Welcome to the show.",
+      "tts_model": "speech.kokoro",
+      "voice": "af_heart"
+    },
+    {
+      "speaker": "Guest",
+      "text": "Thanks for having me.",
+      "tts_model": "speech.chatterbox-multilingual-v3",
+      "language": "en",
+      "reference_path": "C:/voices/guest.wav",
+      "consent_id": "REPLACE_CONSENT_ID"
+    }
+  ]
 }
 
 ### List jobs
@@ -112,6 +107,3 @@ GET {{host}}/jobs/REPLACE_JOB_ID
 
 ### Cancel job
 DELETE {{host}}/jobs/REPLACE_JOB_ID
-
-### Unload active model
-POST {{host}}/models/unload

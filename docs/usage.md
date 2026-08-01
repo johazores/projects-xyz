@@ -9,154 +9,182 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Local runtime
+## Local audio environments
 
-```text
-submit job
-→ save it in SQLite
-→ run it on the single worker
-→ unload the previous heavyweight model
-→ load the requested model
-→ record progress, timing, and VRAM
-→ write artifacts and a manifest
-```
+### ACE-Step 1.5 music
 
-Only one GPU-heavy model is active at a time.
-
-## Inspect hardware and benchmarks
+Install ACE-Step from its official repository in a separate environment and launch its REST server:
 
 ```bash
-curl http://127.0.0.1:8000/system
-curl http://127.0.0.1:8000/system/gpu
-curl http://127.0.0.1:8000/system/benchmarks
+git clone https://github.com/ace-step/ACE-Step-1.5.git
+cd ACE-Step-1.5
+uv sync
+uv run acestep-api
 ```
 
-Benchmarks are stored locally in `data/benchmarks.jsonl`. Prompts and script text are not copied into benchmark records.
+For an 8GB GPU, use the ACE-Step 2B Turbo model, the `acestep-5Hz-lm-0.6B` planner, the PyTorch LM backend, INT8 quantization, and CPU offload in the ACE-Step configuration.
 
-## Install video support
+Configure this application:
 
-Install a CUDA-enabled PyTorch build first, then:
+```env
+ACESTEP_API_URL=http://127.0.0.1:8001
+ACESTEP_API_KEY=
+```
+
+Only localhost URLs are accepted.
+
+### Stable Audio 3 sound effects
+
+Install Stable Audio 3 from its official repository. Point this application to the generated `stable-audio` executable:
+
+```env
+STABLE_AUDIO_CLI=C:/models/stable-audio-3/.venv/Scripts/stable-audio.exe
+```
+
+The adapter uses `small-sfx`, which can run on CPU and avoids competing with image and video models for VRAM.
+
+### Chatterbox expressive voices
+
+Use Python 3.11 for the Chatterbox environment:
 
 ```bash
-python -m pip install -r requirements-video.txt
+python -m pip install -r requirements-voices.txt
 ```
 
-### External Q8 backend
+Chatterbox Turbo requires a reference clip. Multilingual V3 can use its default voice or a consented reference voice.
 
-The fastest RTX 4060-class text-to-video path uses a separate patched Q8 environment. Configure:
-
-```text
-LTX_Q8_REPO_PATH=C:/models/q8-ltx-video
-LTX_Q8_PYTHON=C:/models/q8-ltx-video/.venv/Scripts/python.exe
-```
-
-The folder must contain `inference.py`. This backend is text-to-video only and follows the seed behavior of that external script.
-
-### Diffusers backend
-
-When the Q8 environment is not configured, the adapter uses official Diffusers pipelines. It supports text-to-video and image-to-video with:
-
-- FP8 layerwise storage when supported
-- BF16 computation
-- VAE tiling
-- group or model CPU offloading
-- automatic retry at 512×288, 49 frames, and fewer steps after a CUDA out-of-memory error
-
-The default 8GB profile is 576×320, 65 frames, 20 steps, and batch size one. Real timing and peak VRAM depend on the installed versions and are recorded automatically.
-
-## Direct queued image generation
+## Register voice consent
 
 ```bash
-curl -X POST http://127.0.0.1:8000/image/generate \
+curl -X POST http://127.0.0.1:8000/voices/consents \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "a cinematic local AI workstation",
-    "project": "demo",
-    "count": 2,
-    "width": 1024,
-    "height": 576,
-    "seed": 42
+    "voice_name": "Channel host",
+    "owner_name": "Voice owner",
+    "reference_path": "C:/voices/host-reference.wav",
+    "usage_scope": "Narration and podcast episodes for this local project",
+    "confirmed": true
   }'
 ```
 
-`/image/generate-batch` creates one queued job per prompt. The former SVG prompt-card path has been removed.
+The record stores a SHA-256 fingerprint of the reference clip. Chatterbox rejects a missing, revoked, or mismatched consent record.
 
-## Direct LTX video generation
-
-Text-to-video:
+List or revoke records:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/video/generate \
+curl http://127.0.0.1:8000/voices/consents
+curl -X DELETE http://127.0.0.1:8000/voices/consents/CONSENT_ID
+```
+
+## Generate expressive speech
+
+```bash
+curl -X POST http://127.0.0.1:8000/audio-ai/speech \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "slow cinematic camera movement through a local AI studio",
-    "project": "video-test",
-    "width": 576,
-    "height": 320,
-    "num_frames": 65,
-    "steps": 20
+    "text": "Welcome back to the channel [chuckle].",
+    "model": "speech.chatterbox-turbo",
+    "reference_path": "C:/voices/host-reference.wav",
+    "consent_id": "CONSENT_ID",
+    "project": "episode-01"
   }'
 ```
 
-Image-to-video uses the same endpoint with `input_path`. The external Q8 backend is bypassed for image-to-video, so the Diffusers backend is required.
-
-## AI Short workflow
+## Generate music
 
 ```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.ai-short \
+curl -X POST http://127.0.0.1:8000/audio-ai/music \
   -H "Content-Type: application/json" \
   -d '{
-    "script": "This entire short was prepared using local open-source models.",
-    "project": "local-short",
-    "scenes": [
+    "prompt": "calm futuristic documentary music, instrumental, subtle pulse",
+    "duration": 30,
+    "instrumental": true,
+    "project": "episode-01"
+  }'
+```
+
+ACE-Step runs asynchronously on its localhost server. The main job polls the local task and copies the completed audio into the project output folder.
+
+## Generate a sound effect
+
+```bash
+curl -X POST http://127.0.0.1:8000/audio-ai/sound-effect \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "clean cinematic technology transition whoosh",
+    "duration": 3,
+    "project": "episode-01"
+  }'
+```
+
+## Podcast workflow
+
+```bash
+curl -X POST http://127.0.0.1:8000/workflows/youtube.podcast \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Local AI Creator Podcast",
+    "project": "podcast-01",
+    "music_prompt": "soft technology podcast music, instrumental",
+    "segments": [
       {
-        "prompt": "a developer using a powerful local AI workstation",
-        "text": "Local generation starts with a script"
+        "speaker": "Host",
+        "text": "Welcome to the show.",
+        "tts_model": "speech.kokoro",
+        "voice": "af_heart"
       },
       {
-        "prompt": "a vertical video timeline filled with images and subtitles",
-        "text": "The application assembles the final video"
+        "speaker": "Guest",
+        "text": "Thanks for having me.",
+        "tts_model": "speech.chatterbox-multilingual-v3",
+        "language": "en",
+        "reference_path": "C:/voices/guest.wav",
+        "consent_id": "CONSENT_ID"
       }
-    ],
-    "use_motion": true,
-    "fallback_to_stills": true,
-    "burn_subtitles": false
+    ]
   }'
 ```
 
-Pipeline:
+The workflow generates each segment, inserts configured pauses, assembles and normalizes the dialogue, optionally mixes an ACE-Step music bed, writes a transcript, validates duration and peak volume, and creates a manifest.
 
-```text
-Kokoro or Bark narration
-→ normalized audio and measured duration
-→ sequential Sana scene images
-→ optional LTX image-to-video per scene
-→ automatic still-image fallback
-→ vertical FFmpeg normalization and concatenation
-→ optional faster-whisper subtitles
-→ narration mux
-→ optional subtitle burn-in
-→ final MP4 and manifest
+## Mixed AI Short
+
+Add `music_prompt` to generate a background bed. Add `sfx_prompt` to individual scenes to generate timed effects:
+
+```json
+{
+  "script": "A short local AI demonstration.",
+  "project": "short-01",
+  "music_prompt": "minimal electronic documentary underscore",
+  "music_volume": 0.12,
+  "scenes": [
+    {
+      "prompt": "a local AI workstation",
+      "sfx_prompt": "subtle computer startup sound",
+      "sfx_volume": 0.3
+    }
+  ]
+}
 ```
 
-A failed LTX scene disables motion for the remaining scenes and continues with still images when fallback is enabled.
+Music and sound effects are optional. If an optional backend is unavailable, the workflow still finishes with narration and visuals and records the reason in its manifest.
 
-## Inspect jobs
+## Audio validation
 
-```bash
-curl http://127.0.0.1:8000/jobs
-curl http://127.0.0.1:8000/jobs/JOB_ID
-curl -X DELETE http://127.0.0.1:8000/jobs/JOB_ID
-curl -X POST http://127.0.0.1:8000/models/unload
-```
+Final podcast and Short audio records:
 
-Cancellation is cooperative. A running model call or FFmpeg process reaches its next checkpoint before cancellation completes.
+- duration
+- mean volume
+- maximum volume
+- clipping-risk flag
 
-## RTX 4060 Ti rules
+All mixes are normalized with FFmpeg. The application never silently publishes or uploads generated media.
 
-- Keep diffusion and video batch size at one.
-- Generate video at 480p-class resolution first.
-- Prefer short motion clips and assemble longer videos with FFmpeg.
-- Keep `fallback_to_stills` enabled for daily production.
-- Leave 0.5–1GB VRAM headroom.
-- Use benchmark history from the actual target machine instead of assumed timings.
+## Runtime rules for 8GB VRAM
+
+- Keep batch size at one.
+- Generate images and video before requesting ACE-Step music.
+- Keep Stable Audio Small-SFX on CPU.
+- Use one Chatterbox model at a time.
+- Prefer Kokoro for ordinary narration and Chatterbox only when expressive or multilingual speech is needed.
+- Review all cloned-voice consent records before sharing a project.

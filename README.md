@@ -4,34 +4,35 @@ One local FastAPI application for building YouTube media workflows with open-sou
 
 The application is designed for a single workstation with an RTX 4060 Ti 8GB. Heavy GPU jobs run one at a time, and only one model adapter remains loaded in memory.
 
-## Current phase
+## What works
 
-The toolkit now has the runtime foundation required for real local models:
+Runtime:
 
-- SQLite job persistence
-- one serialized local GPU worker
-- progress, cancellation, failure, and restart recovery
+- persistent SQLite jobs
+- one serialized GPU worker
+- progress, cancellation, restart recovery, and readable errors
 - configuration-backed model registry
 - automatic model swapping and unloading
 - reproducible workflow manifests
-- practical YouTube workflow endpoints
-- existing direct audio, image-processing, and video-processing endpoints remain available
 
-Implemented queued models:
+Queued local models:
 
 - `speech.kokoro`
 - `speech.faster-whisper`
 - `audio.bark`
-
-Configured next models:
-
-- `image.sana-1.5-int4`
+- `image.sana-1.6b-int4`
 - `image.sdxl-inpaint`
-- `video.ltx-q8`
-- `music.ace-step-1.5`
+- `image.birefnet-lite`
+- `image.realesrgan-ncnn`
 - `vision.florence-2-large`
 
-Planned models are visible through the API but cannot be queued until their adapters are implemented.
+Creator workflows:
+
+- `youtube.narration`
+- `youtube.social-clip-prep`
+- `youtube.thumbnail`
+
+LTX-VideoQ8 and ACE-Step remain planned and cannot be queued yet.
 
 ## Quick start
 
@@ -49,57 +50,47 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Install local speech models
+## Install local image models
 
-Install a CUDA-enabled PyTorch build suitable for your system, then:
+Install the CUDA-enabled PyTorch build appropriate for your machine, then:
 
 ```bash
-python -m pip install -r requirements-speech.txt
+python -m pip install -r requirements-image.txt
+python -m pip install -r requirements-vision.txt
 ```
 
-Kokoro also requires `espeak-ng` on the machine.
+Sana INT4 requires an official Nunchaku wheel matching your Python, PyTorch, CUDA, and operating system. Do not install the unrelated PyPI package named `nunchaku`.
 
-Bark remains optional:
+For optional Real-ESRGAN upscaling, download the official `realesrgan-ncnn-vulkan` executable and either add it to `PATH` or set:
 
-```bash
-python -m pip install -r requirements-bark.txt
+```text
+REALESRGAN_NCNN_PATH=C:/tools/realesrgan/realesrgan-ncnn-vulkan.exe
 ```
 
-## Submit a narration workflow
+Review each downloaded model's license before publishing or monetizing generated work.
+
+## Create a thumbnail
 
 ```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.narration \
+curl -X POST http://127.0.0.1:8000/workflows/youtube.thumbnail \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Welcome to my local AI media studio.",
-    "project": "channel-intro",
-    "model": "speech.kokoro",
-    "voice": "af_heart",
-    "normalize": true
+    "title": "BUILD AI VIDEOS LOCALLY",
+    "prompt": "a creator editing a futuristic video studio, cinematic lighting, strong subject, empty space on the left",
+    "project": "local-ai-video",
+    "count": 4,
+    "seed": 42,
+    "subject_path": "C:/photos/creator.png"
   }'
 ```
 
-The endpoint returns a queued job. Check it with:
+The workflow generates candidates sequentially, analyzes and scores them, optionally removes a subject background, optionally upscales the chosen image, and renders exact 1280×720 text with Pillow.
+
+Check the returned job:
 
 ```bash
 curl http://127.0.0.1:8000/jobs/JOB_ID
 ```
-
-## Prepare a social clip
-
-```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.social-clip-prep \
-  -H "Content-Type: application/json" \
-  -d '{
-    "input_path": "C:/videos/source.mp4",
-    "project": "episode-12",
-    "preset": "shorts",
-    "transcribe": true,
-    "extract_fps": 0.2
-  }'
-```
-
-This workflow creates a vertical video, optional SRT subtitles, optional reference frames, and a run manifest.
 
 ## Main API groups
 
@@ -122,9 +113,9 @@ app/
   runtime/      SQLite jobs, model manager, and one worker
   workflows/    complete content-creation pipelines
   routes/       FastAPI endpoints
-  services/     existing direct media operations
-  utils/        FFmpeg, files, transcription, and background removal
-models.json     model profiles and hardware defaults
+  services/     direct media operations
+  utils/        FFmpeg, files, transcription, and image composition
+models.json     model profiles and 8GB defaults
 data/           local SQLite runtime state
 outputs/        generated artifacts and manifests
 docs/           usage, checklist, and roadmap
@@ -139,4 +130,4 @@ docs/           usage, checklist, and roadmap
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+Application source: MIT. Model weights and third-party executables retain their own licenses.

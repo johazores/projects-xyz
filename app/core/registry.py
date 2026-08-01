@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
+import shutil
 from typing import Callable
 
 from app.adapters.bark import BarkAdapter
+from app.adapters.birefnet import BiRefNetAdapter
 from app.adapters.faster_whisper import FasterWhisperAdapter
+from app.adapters.florence import FlorenceAdapter
 from app.adapters.kokoro import KokoroAdapter
+from app.adapters.realesrgan import RealEsrganNcnnAdapter
+from app.adapters.sana import SanaAdapter
+from app.adapters.sdxl_inpaint import SdxlInpaintAdapter
 from app.core.adapters import ModelAdapter, ModelSpec
 from app.utils.files import MediaError
 
@@ -17,8 +24,13 @@ AdapterFactory = Callable[[ModelSpec], ModelAdapter]
 
 ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
     "bark": BarkAdapter,
+    "birefnet": BiRefNetAdapter,
     "faster-whisper": FasterWhisperAdapter,
+    "florence": FlorenceAdapter,
     "kokoro": KokoroAdapter,
+    "realesrgan-ncnn": RealEsrganNcnnAdapter,
+    "sana": SanaAdapter,
+    "sdxl-inpaint": SdxlInpaintAdapter,
 }
 
 
@@ -46,7 +58,30 @@ class ModelRegistry:
         return factory(spec)
 
     def is_available(self, spec: ModelSpec) -> bool:
-        return spec.implemented and all(importlib.util.find_spec(name) is not None for name in spec.packages)
+        if not spec.implemented:
+            return False
+        packages_available = all(
+            importlib.util.find_spec(name) is not None for name in spec.packages
+        )
+        return packages_available and self._executable_available(spec)
+
+    @staticmethod
+    def _executable_available(spec: ModelSpec) -> bool:
+        if not spec.executable:
+            return True
+        env_name = str(spec.options.get("executable_env", ""))
+        configured = os.getenv(env_name) if env_name else None
+        for candidate in (
+            configured,
+            spec.options.get("executable"),
+            spec.executable,
+        ):
+            if not candidate:
+                continue
+            path = Path(str(candidate)).expanduser()
+            if path.is_file() or shutil.which(str(candidate)):
+                return True
+        return False
 
     @staticmethod
     def _load(path: Path) -> dict[str, ModelSpec]:
@@ -57,11 +92,18 @@ class ModelRegistry:
         specs: dict[str, ModelSpec] = {}
         for item in raw.get("models", []):
             spec = ModelSpec(
-                id=item["id"], capability=item["capability"], adapter=item["adapter"],
-                description=item["description"], implemented=item.get("implemented", False),
-                recommended=item.get("recommended", False), vram_gb=item.get("vram_gb"),
-                dependency_group=item.get("dependency_group"), packages=tuple(item.get("packages", [])),
-                notes=item.get("notes"), options=item.get("options", {}),
+                id=item["id"],
+                capability=item["capability"],
+                adapter=item["adapter"],
+                description=item["description"],
+                implemented=item.get("implemented", False),
+                recommended=item.get("recommended", False),
+                vram_gb=item.get("vram_gb"),
+                dependency_group=item.get("dependency_group"),
+                packages=tuple(item.get("packages", [])),
+                executable=item.get("executable"),
+                notes=item.get("notes"),
+                options=item.get("options", {}),
             )
             if spec.id in specs:
                 raise MediaError(f"Duplicate model id: {spec.id}")

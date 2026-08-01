@@ -7,81 +7,118 @@ python -m pip install -r requirements.txt
 python -m app
 ```
 
-The API documentation is available at `http://127.0.0.1:8000/docs`.
+Open `http://127.0.0.1:8000/docs`.
 
 ## Job lifecycle
 
-Every model or workflow job follows this process:
-
 ```text
 submit
-→ queued in SQLite
-→ picked by the single worker
-→ current heavy model is unloaded when necessary
+→ saved in SQLite
+→ single worker starts the job
+→ previous heavyweight model is unloaded
 → required model is loaded
-→ progress is saved
-→ artifacts and a manifest are written
+→ progress and artifacts are saved
 → job completes or fails with a readable error
 ```
 
-Jobs survive an application restart. A job that was marked as running is moved back to queued when the worker starts again.
+Jobs survive application restarts. Only one GPU-heavy model is active at a time.
 
-## Inspect models
-
-```bash
-curl http://127.0.0.1:8000/models
-curl http://127.0.0.1:8000/models/active
-```
-
-Unload the current model:
+## Install image capabilities
 
 ```bash
-curl -X POST http://127.0.0.1:8000/models/unload
+python -m pip install -r requirements-image.txt
+python -m pip install -r requirements-vision.txt
 ```
 
-Only unload manually while no job is running.
+Install CUDA-enabled PyTorch separately. Install Nunchaku using the official wheel matching your Python, PyTorch, CUDA, and operating system. The package returned by plain `pip install nunchaku` is unrelated.
 
-## Generic model job
+Set the optional Real-ESRGAN executable:
+
+```text
+REALESRGAN_NCNN_PATH=C:/tools/realesrgan/realesrgan-ncnn-vulkan.exe
+```
+
+## Thumbnail workflow
+
+```bash
+curl -X POST http://127.0.0.1:8000/workflows/youtube.thumbnail \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "BUILD AI VIDEOS LOCALLY",
+    "prompt": "a creator inside a futuristic local AI video studio, dramatic lighting, clean composition, empty space on the left",
+    "project": "local-ai-video",
+    "count": 4,
+    "width": 1024,
+    "height": 576,
+    "steps": 20,
+    "guidance": 4.5,
+    "seed": 42,
+    "subject_path": "C:/photos/creator.png"
+  }'
+```
+
+Process:
+
+```text
+Sana INT4 candidates, generated one at a time
+→ optional Florence captions
+→ deterministic visual and semantic scoring
+→ optional Real-ESRGAN upscale
+→ optional BiRefNet subject cutout
+→ exact Pillow headline composition
+→ candidate scores and workflow manifest
+```
+
+Florence and Real-ESRGAN are optional. The workflow continues with deterministic visual scoring or normal resizing when they are unavailable. BiRefNet is required only when `subject_path` is supplied.
+
+## Direct queued image jobs
+
+Sana generation:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/jobs \
   -H "Content-Type: application/json" \
   -d '{
     "kind": "model",
-    "target": "speech.kokoro",
+    "target": "image.sana-1.6b-int4",
     "payload": {
-      "text": "This narration is generated locally.",
-      "voice": "af_heart",
-      "project": "demo"
+      "prompt": "a clean technology thumbnail background",
+      "project": "thumbnail-test",
+      "count": 2,
+      "seed": 100
     }
   }'
 ```
 
-## Generic workflow job
+SDXL inpainting:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/jobs \
   -H "Content-Type: application/json" \
   -d '{
-    "kind": "workflow",
-    "target": "youtube.social-clip-prep",
+    "kind": "model",
+    "target": "image.sdxl-inpaint",
     "payload": {
-      "input_path": "C:/videos/source.mp4",
-      "project": "episode-01",
-      "preset": "shorts",
-      "transcribe": true
+      "input_path": "C:/images/source.png",
+      "mask_path": "C:/images/mask.png",
+      "prompt": "replace the masked area with a clean studio desk",
+      "project": "thumbnail-test"
     }
   }'
 ```
 
-## Check or cancel a job
+## Inspect and control jobs
 
 ```bash
+curl http://127.0.0.1:8000/models
+curl http://127.0.0.1:8000/models/active
+curl http://127.0.0.1:8000/jobs
 curl http://127.0.0.1:8000/jobs/JOB_ID
 curl -X DELETE http://127.0.0.1:8000/jobs/JOB_ID
+curl -X POST http://127.0.0.1:8000/models/unload
 ```
 
-Cancellation is cooperative. A model operation stops when it reaches the next progress checkpoint; FFmpeg subprocesses currently finish their active operation before cancellation is applied.
+Cancellation is cooperative. An active model call or FFmpeg process completes its current operation before the next cancellation checkpoint.
 
 ## Output organization
 
@@ -94,13 +131,13 @@ outputs/
     workflow/
 ```
 
-Workflow manifests include the request, generated artifact paths, and creation time. Model-specific seeds and revisions will be added when the Sana and LTX adapters are implemented.
+Thumbnail workflow runs save all candidates, exact seeds and generation settings, analysis scores, the selected source, optional intermediate assets, the final image, and a JSON manifest.
 
-## RTX 4060 Ti operating rules
+## RTX 4060 Ti rules
 
-- Run one GPU job at a time.
-- Keep diffusion and video batch size at one.
-- Use 480p generation for video and upscale only selected clips.
-- Use quantized model profiles where available.
-- Keep at least 0.5–1GB of VRAM free.
+- Keep image and video batch size at one.
+- Variations are generated sequentially.
+- Stay near 1024×576 or 1024×1024 for image generation.
+- Upscale only selected images.
+- Leave at least 0.5–1GB VRAM headroom.
 - Do not manually load multiple heavyweight models.

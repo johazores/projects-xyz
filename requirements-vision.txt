@@ -1,0 +1,5 @@
+# Install a compatible torch and torchvision build separately.
+transformers>=4.57,<6
+accelerate>=1,<2
+timm>=1,<2
+kornia>=0.8,<1

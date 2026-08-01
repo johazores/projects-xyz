@@ -27,5 +27,6 @@ class ModelSpec:
     vram_gb: float | None = None
     dependency_group: str | None = None
     packages: tuple[str, ...] = ()
+    executable: str | None = None
     notes: str | None = None
     options: dict[str, Any] = field(default_factory=dict)

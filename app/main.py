@@ -10,21 +10,18 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import audio, image, jobs, models as model_routes, music, system, video, voices, workflows
+from app.routes import audio, image, jobs, models as model_routes, music, projects, system, video, voices, workflows
 from app.runtime.state import models, registry, worker
 from app.services.video import VIDEO_PRESETS
 from app.utils.files import MediaError
 from app.workflows.youtube import list_workflows
 
-for directory in (settings.output_dir, settings.data_dir):
+for directory in (settings.output_dir, settings.data_dir, settings.project_runs_dir):
     directory.mkdir(parents=True, exist_ok=True)
 for media_type in ("audio", "image", "video", "workflow"):
     (settings.output_dir / media_type).mkdir(parents=True, exist_ok=True)
 
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-)
+logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO), format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 
 
 @asynccontextmanager
@@ -34,24 +31,9 @@ async def lifespan(_: FastAPI):
     worker.stop()
 
 
-app = FastAPI(
-    title=settings.app_name,
-    version="1.3.0",
-    description="Local-first AI content creation studio with a serialized GPU job queue.",
-    lifespan=lifespan,
-)
+app = FastAPI(title=settings.app_name, version="1.4.0", description="Local-first AI content creation studio with resumable project workflows.", lifespan=lifespan)
 app.mount("/outputs", StaticFiles(directory=settings.output_dir), name="outputs")
-for router in (
-    audio.router,
-    image.router,
-    video.router,
-    jobs.router,
-    model_routes.router,
-    workflows.router,
-    music.router,
-    voices.router,
-    system.router,
-):
+for router in (audio.router, image.router, video.router, jobs.router, model_routes.router, workflows.router, music.router, voices.router, projects.router, system.router):
     app.include_router(router)
 
 
@@ -72,22 +54,18 @@ def root() -> dict[str, str]:
 
 @app.get("/health")
 def health() -> dict[str, object]:
-    return {
-        "status": "ok",
-        "worker_running": worker.running,
-        "queued_jobs": worker.queue.qsize(),
-        "active_model": models.active_id,
-    }
+    return {"status": "ok", "worker_running": worker.running, "queued_jobs": worker.queue.qsize(), "active_model": models.active_id}
 
 
 @app.get("/capabilities")
 def capabilities() -> dict[str, object]:
     return {
-        "audio": ["generate", "convert", "normalize", "enhance", "trim", "transcribe", "music", "sound-effect"],
+        "audio": ["generate", "convert", "normalize", "enhance", "trim", "transcribe", "music", "sound-effect", "presets"],
         "image": ["queued-generate", "queued-batch", "queued-background-removal", "presets"],
         "video": ["generate", "resize", "frames", "ltx-text-to-video", "ltx-image-to-video"],
         "jobs": ["submit", "status", "list", "cancel"],
-        "system": ["gpu", "benchmarks"],
+        "projects": ["runs", "resume", "model-checkpoints"],
+        "system": ["gpu", "benchmarks", "readiness", "storage", "cleanup"],
         "voices": ["consent-create", "consent-list", "consent-revoke"],
         "models": [spec.id for spec in registry.list() if spec.implemented],
         "planned_models": [spec.id for spec in registry.list() if not spec.implemented],

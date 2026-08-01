@@ -1,10 +1,10 @@
 # AI Media Toolkit
 
-One local FastAPI application for creating YouTube media with open-source models.
+A local FastAPI studio for creating YouTube images, videos, narration, music, sound effects, podcasts, and Shorts with open-source models.
 
-The runtime targets a single RTX 4060 Ti 8GB workstation. GPU-heavy jobs run one at a time, only one model stays loaded, and every model run records local timing and VRAM information when available.
+The runtime targets one RTX 4060 Ti 8GB workstation. GPU-heavy jobs are serialized, only one in-process model stays loaded, and each model run records local timing and VRAM information when available.
 
-## What works
+## Working capabilities
 
 Runtime:
 
@@ -12,17 +12,18 @@ Runtime:
 - one serialized GPU worker
 - automatic model swapping and unloading
 - progress, cancellation, restart recovery, and readable failures
-- GPU and VRAM diagnostics
-- append-only local benchmark history
+- GPU diagnostics and append-only benchmark history
 - reproducible workflow manifests
+- consent records for every cloned reference voice
 
-Queued local models:
+Local models and backends:
 
-- Kokoro, faster-whisper, and Bark
-- Sana 1.6B INT4 and SDXL inpainting
-- Florence-2 and BiRefNet Lite
-- Real-ESRGAN NCNN
-- LTX-Video with an external Q8 backend or an official Diffusers low-VRAM fallback
+- Kokoro, Bark, and faster-whisper
+- Chatterbox Turbo and Multilingual V3
+- ACE-Step 1.5 through its official localhost API
+- Stable Audio 3 Small-SFX through its official local CLI
+- Sana 1.6B INT4, SDXL inpainting, Florence-2, BiRefNet Lite, and Real-ESRGAN
+- LTX-Video through an external Q8 backend or the official Diffusers low-VRAM path
 
 Creator workflows:
 
@@ -30,6 +31,7 @@ Creator workflows:
 - `youtube.social-clip-prep`
 - `youtube.thumbnail`
 - `youtube.ai-short`
+- `youtube.podcast`
 
 ## Quick start
 
@@ -47,57 +49,61 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Optional model groups
+## Optional capability groups
 
-Install only the capabilities you need after installing a compatible CUDA-enabled PyTorch build:
+Install only what you need after installing a compatible CUDA-enabled PyTorch build:
 
 ```bash
 python -m pip install -r requirements-speech.txt
 python -m pip install -r requirements-image.txt
 python -m pip install -r requirements-vision.txt
 python -m pip install -r requirements-video.txt
+python -m pip install -r requirements-voices.txt
 ```
 
-Sana INT4 requires the official Nunchaku wheel matching Python, PyTorch, CUDA, and the operating system. Real-ESRGAN uses its official NCNN Vulkan executable.
+ACE-Step and Stable Audio 3 stay in their own official environments to avoid dependency conflicts. Configure their local endpoints or executables in `.env`:
 
-LTX has two local backends:
+```env
+ACESTEP_API_URL=http://127.0.0.1:8001
+ACESTEP_API_KEY=
+STABLE_AUDIO_CLI=C:/models/stable-audio-3/.venv/Scripts/stable-audio.exe
+```
 
-1. Configure `LTX_Q8_REPO_PATH` and `LTX_Q8_PYTHON` for the patched Ada-optimized Q8 environment.
-2. Leave them empty to use the official Diffusers backend with FP8 layerwise casting, VAE tiling, and CPU or group offloading.
-
-## Create an AI Short
+## Create a mixed AI Short
 
 ```bash
 curl -X POST http://127.0.0.1:8000/workflows/youtube.ai-short \
   -H "Content-Type: application/json" \
   -d '{
-    "script": "Local AI tools can now create a complete short on one computer.",
+    "script": "This Short was created with local open-source AI.",
     "project": "local-ai-short",
+    "music_prompt": "subtle futuristic electronic background music, instrumental",
     "scenes": [
-      {"prompt": "a cinematic workstation running local AI models"},
-      {"prompt": "a vertical video timeline with generated media"}
+      {
+        "prompt": "a cinematic local AI workstation",
+        "sfx_prompt": "short digital interface whoosh"
+      },
+      {
+        "prompt": "a vertical video timeline filled with generated media"
+      }
     ],
     "use_motion": true,
     "fallback_to_stills": true
   }'
 ```
 
-The workflow creates narration, scene images, optional LTX motion clips, a still-image fallback, subtitles when faster-whisper is available, a final vertical MP4, and a manifest.
-
-Check the returned job:
-
-```bash
-curl http://127.0.0.1:8000/jobs/JOB_ID
-```
+The workflow creates narration, scene images, optional LTX motion, optional ACE-Step music, optional Stable Audio sound effects, subtitles, a mixed vertical MP4, audio validation, and a manifest.
 
 ## Main API groups
 
 ```text
 /jobs          queued work and status
-/models        local model availability and unloading
+/models        model availability and unloading
 /workflows     complete creator pipelines
 /system        GPU details and benchmark history
-/audio         audio utilities
+/voices        cloned-voice consent records
+/audio-ai      queued speech, music, and sound effects
+/audio         direct audio utilities
 /image         queued image jobs and presets
 /video         queued LTX generation and FFmpeg utilities
 /outputs       generated local artifacts
@@ -112,4 +118,4 @@ curl http://127.0.0.1:8000/jobs/JOB_ID
 
 ## License
 
-Application source: MIT. Model weights, custom kernels, and third-party executables retain their own licenses.
+Application source: MIT. Model weights, custom kernels, and third-party executables retain their own licenses. Review the license of every downloaded model before publishing or monetizing generated work.

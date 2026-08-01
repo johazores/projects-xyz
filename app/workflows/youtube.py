@@ -42,15 +42,31 @@ WORKFLOWS = {
     ),
     "youtube.ai-short": WorkflowView(
         id="youtube.ai-short",
-        description="Create a complete vertical Short from a script and scene prompts with optional LTX motion.",
+        description="Create a mixed vertical Short with narration, optional motion, local music, and sound effects.",
         implemented=True,
         steps=[
             "local narration",
             "sequential scene images",
             "optional LTX image-to-video",
             "still-image fallback",
-            "vertical FFmpeg assembly",
+            "optional ACE-Step music",
+            "optional Stable Audio sound effects",
+            "audio validation and FFmpeg assembly",
             "optional subtitles",
+            "run manifest",
+        ],
+    ),
+    "youtube.podcast": WorkflowView(
+        id="youtube.podcast",
+        description="Generate a multi-speaker local podcast episode with optional music and consented cloned voices.",
+        implemented=True,
+        steps=[
+            "segment TTS",
+            "speaker transcript",
+            "audio concatenation",
+            "optional ACE-Step music bed",
+            "loudness normalization",
+            "audio validation",
             "run manifest",
         ],
     ),
@@ -80,6 +96,8 @@ def run(workflow_id: str, payload: dict[str, Any], model_manager: Any, progress:
         return _thumbnail(payload, model_manager, progress)
     if workflow_id == "youtube.ai-short":
         return _ai_short(payload, model_manager, progress)
+    if workflow_id == "youtube.podcast":
+        return _podcast(payload, model_manager, progress)
     raise MediaError(f"Workflow runner missing for: {workflow_id}")
 
 
@@ -90,11 +108,7 @@ def _narration(payload: dict[str, Any], model_manager: Any, progress: Any) -> di
     model_id = str(payload.get("model", "speech.kokoro"))
     project = payload.get("project")
     progress(5, "Starting narration workflow")
-    generated = model_manager.run(
-        model_id,
-        {**payload, "text": text},
-        lambda value, message: progress(5 + int(value * 0.65), message),
-    )
+    generated = model_manager.run(model_id, {**payload, "text": text}, lambda value, message: progress(5 + int(value * 0.65), message))
     source = Path(generated["output_path"])
     outputs = [generated]
     if payload.get("normalize", True):
@@ -106,19 +120,9 @@ def _narration(payload: dict[str, Any], model_manager: Any, progress: Any) -> di
     workflow_dir = media_output_dir("workflow", project)
     script_path = unique_path(workflow_dir, payload.get("name", "narration-script"), ".txt")
     script_path.write_text(text.rstrip() + "\n", encoding="utf-8")
-    manifest_path = _manifest(
-        workflow_dir,
-        "youtube-narration",
-        payload,
-        outputs + [{"output_path": str(script_path)}],
-    )
+    manifest_path = _manifest(workflow_dir, "youtube-narration", payload, outputs + [{"output_path": str(script_path)}])
     progress(100, "Narration workflow completed")
-    return {
-        "workflow": "youtube.narration",
-        "outputs": outputs,
-        "script_path": str(script_path),
-        "manifest_path": str(manifest_path),
-    }
+    return {"workflow": "youtube.narration", "outputs": outputs, "script_path": str(script_path), "manifest_path": str(manifest_path)}
 
 
 def _social_clip(payload: dict[str, Any], model_manager: Any, progress: Any) -> dict[str, Any]:
@@ -137,12 +141,7 @@ def _social_clip(payload: dict[str, Any], model_manager: Any, progress: Any) -> 
         progress(45, "Creating subtitles")
         transcript = model_manager.run(
             str(payload.get("transcription_model", "speech.faster-whisper")),
-            {
-                "input_path": str(source),
-                "output_format": "srt",
-                "language": payload.get("language"),
-                "project": project,
-            },
+            {"input_path": str(source), "output_format": "srt", "language": payload.get("language"), "project": project},
             lambda value, message: progress(45 + int(value * 0.35), message),
         )
         outputs.append(transcript)
@@ -153,19 +152,9 @@ def _social_clip(payload: dict[str, Any], model_manager: Any, progress: Any) -> 
         frames_directory = unique_directory(media_output_dir("video", project), f"{source.stem}-frames")
         ffmpeg.extract_frames(source, frames_directory / "frame-%06d.png", fps)
     progress(92, "Saving workflow manifest")
-    manifest_path = _manifest(
-        media_output_dir("workflow", project),
-        "youtube-social-clip-prep",
-        payload,
-        outputs,
-    )
+    manifest_path = _manifest(media_output_dir("workflow", project), "youtube-social-clip-prep", payload, outputs)
     progress(100, "Social clip preparation completed")
-    return {
-        "workflow": "youtube.social-clip-prep",
-        "outputs": outputs,
-        "frames_directory": str(frames_directory) if frames_directory else None,
-        "manifest_path": str(manifest_path),
-    }
+    return {"workflow": "youtube.social-clip-prep", "outputs": outputs, "frames_directory": str(frames_directory) if frames_directory else None, "manifest_path": str(manifest_path)}
 
 
 def _thumbnail(payload: dict[str, Any], model_manager: Any, progress: Any) -> dict[str, Any]:
@@ -207,9 +196,7 @@ def _thumbnail(payload: dict[str, Any], model_manager: Any, progress: Any) -> di
             analysis = model_manager.run(
                 str(vision_model),
                 {"input_path": item["output_path"], "task": "<DETAILED_CAPTION>"},
-                lambda value, message, i=index: progress(
-                    45 + int(((i + value / 100) / len(candidates)) * 20), message
-                ),
+                lambda value, message, i=index: progress(45 + int(((i + value / 100) / len(candidates)) * 20), message),
             )
             caption = analysis.get("caption")
         score = score_thumbnail(Path(item["output_path"]), title, prompt, caption)
@@ -224,13 +211,7 @@ def _thumbnail(payload: dict[str, Any], model_manager: Any, progress: Any) -> di
     if upscale_model and _model_available(model_manager, str(upscale_model)):
         upscaled = model_manager.run(
             str(upscale_model),
-            {
-                "input_path": str(selected_path),
-                "project": project,
-                "name": "thumbnail-background",
-                "scale": 2,
-                "tile": 256,
-            },
+            {"input_path": str(selected_path), "project": project, "name": "thumbnail-background", "scale": 2, "tile": 256},
             lambda value, message: progress(68 + int(value * 0.10), message),
         )
         selected_path = Path(upscaled["output_path"])
@@ -244,11 +225,7 @@ def _thumbnail(payload: dict[str, Any], model_manager: Any, progress: Any) -> di
             raise MediaError(f"Subject image was provided, but {background_model} is not available.")
         subject_output = model_manager.run(
             background_model,
-            {
-                "input_path": str(existing_file(str(subject_path))),
-                "project": project,
-                "name": "thumbnail-subject",
-            },
+            {"input_path": str(existing_file(str(subject_path))), "project": project, "name": "thumbnail-subject"},
             lambda value, message: progress(78 + int(value * 0.08), message),
         )
         outputs.append(subject_output)
@@ -306,22 +283,26 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
     outputs: list[dict[str, Any]] = []
 
     progress(3, "Generating local narration")
+    narration_payload = {
+        "text": script,
+        "voice": payload.get("voice", "af_heart"),
+        "language": payload.get("narration_language", "en"),
+        "reference_path": payload.get("narration_reference_path"),
+        "consent_id": payload.get("narration_consent_id"),
+        "exaggeration": payload.get("narration_exaggeration"),
+        "cfg_weight": payload.get("narration_cfg_weight"),
+        "project": project,
+        "name": "short-narration",
+    }
     narration = model_manager.run(
         str(payload.get("narration_model", "speech.kokoro")),
-        {
-            "text": script,
-            "voice": payload.get("voice", "af_heart"),
-            "project": project,
-            "name": "short-narration",
-        },
+        {key: value for key, value in narration_payload.items() if value is not None},
         lambda value, message: progress(3 + int(value * 0.14), message),
     )
     outputs.append(narration)
-    narration_path = Path(narration["output_path"])
     normalized_audio = unique_path(media_output_dir("audio", project), "short-narration-normalized", ".mp3")
-    ffmpeg.normalize_audio(narration_path, normalized_audio)
-    normalized_output = output_response("audio", "normalize", normalized_audio).model_dump()
-    outputs.append(normalized_output)
+    ffmpeg.normalize_audio(Path(narration["output_path"]), normalized_audio)
+    outputs.append(output_response("audio", "normalize", normalized_audio).model_dump())
     total_duration = ffmpeg.probe_duration(normalized_audio)
     durations = _scene_durations(scenes, total_duration)
 
@@ -347,11 +328,8 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
                 "height": image_height,
                 "steps": 20,
                 "guidance": 4.5,
-                "seed": None,
             },
-            lambda value, message, i=index: progress(
-                20 + int(((i + value / 100) / len(scenes)) * 25), message
-            ),
+            lambda value, message, i=index: progress(20 + int(((i + value / 100) / len(scenes)) * 25), message),
         )
         candidates = list(generated.get("outputs") or [])
         if not candidates:
@@ -362,8 +340,6 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
     final_width = int(payload.get("final_width", 1080))
     final_height = int(payload.get("final_height", 1920))
     fps = int(payload.get("fps", 30))
-    video_width = int(payload.get("video_width", 320))
-    video_height = int(payload.get("video_height", 576))
     video_model = str(payload.get("video_model", "video.ltx-q8"))
     use_motion = bool(payload.get("use_motion", True))
     fallback_to_stills = bool(payload.get("fallback_to_stills", True))
@@ -386,62 +362,39 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
                         "input_path": str(image_path),
                         "project": project,
                         "name": f"short-motion-{index + 1}",
-                        "width": video_width,
-                        "height": video_height,
+                        "width": int(payload.get("video_width", 320)),
+                        "height": int(payload.get("video_height", 576)),
                         "num_frames": int(payload.get("video_frames", 65)),
                         "steps": int(payload.get("video_steps", 20)),
                         "fps": 24,
                         "seed": 42 + index,
                         "allow_low_vram_retry": True,
                     },
-                    lambda value, message, i=index: progress(
-                        48 + int(((i + value / 100) / len(scenes)) * 25), message
-                    ),
+                    lambda value, message, i=index: progress(48 + int(((i + value / 100) / len(scenes)) * 20), message),
                 )
                 outputs.append(generated_video)
-                ffmpeg.normalize_video_clip(
-                    Path(generated_video["output_path"]),
-                    normalized_clip,
-                    duration=duration,
-                    width=final_width,
-                    height=final_height,
-                    fps=fps,
-                )
+                ffmpeg.normalize_video_clip(Path(generated_video["output_path"]), normalized_clip, duration=duration, width=final_width, height=final_height, fps=fps)
                 animated = True
             except Exception as exc:
                 if exc.__class__.__name__ == "JobCancelled" or not fallback_to_stills:
                     raise
                 motion_available = False
                 motion_disabled_reason = str(exc)
-
         if not animated:
-            ffmpeg.create_image_clip(
-                image_path,
-                normalized_clip,
-                duration=duration,
-                width=final_width,
-                height=final_height,
-                fps=fps,
-            )
-
-        clip_output = output_response(
-            "video", "scene-clip", normalized_clip, video_model if animated else "still-image"
-        ).model_dump()
-        outputs.append(clip_output)
+            ffmpeg.create_image_clip(image_path, normalized_clip, duration=duration, width=final_width, height=final_height, fps=fps)
+        outputs.append(output_response("video", "scene-clip", normalized_clip, video_model if animated else "still-image").model_dump())
         clips.append(normalized_clip)
-        scene_records.append(
-            {
-                "index": index + 1,
-                "prompt": scene.get("prompt"),
-                "duration": round(duration, 3),
-                "image_path": str(image_path),
-                "clip_path": str(normalized_clip),
-                "animated": animated,
-                "video_generation": generated_video,
-            }
-        )
+        scene_records.append({
+            "index": index + 1,
+            "prompt": scene.get("prompt"),
+            "duration": round(duration, 3),
+            "image_path": str(image_path),
+            "clip_path": str(normalized_clip),
+            "animated": animated,
+            "video_generation": generated_video,
+        })
 
-    progress(76, "Concatenating vertical scene clips")
+    progress(69, "Concatenating vertical scene clips")
     silent_video = unique_path(media_output_dir("video", project), "short-visuals", ".mp4")
     ffmpeg.concatenate_videos(clips, silent_video)
     outputs.append(output_response("video", "concatenate", silent_video).model_dump())
@@ -449,21 +402,90 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
     subtitles = None
     transcription_model = payload.get("transcription_model", "speech.faster-whisper")
     if transcription_model and _model_available(model_manager, str(transcription_model)):
-        progress(82, "Creating local subtitles")
+        progress(74, "Creating local subtitles")
         subtitles = model_manager.run(
             str(transcription_model),
-            {
-                "input_path": str(normalized_audio),
-                "output_format": "srt",
-                "project": project,
-            },
-            lambda value, message: progress(82 + int(value * 0.08), message),
+            {"input_path": str(normalized_audio), "output_format": "srt", "project": project},
+            lambda value, message: progress(74 + int(value * 0.05), message),
         )
         outputs.append(subtitles)
 
-    progress(91, "Mixing narration with the final Short")
+    audio_track = normalized_audio
+    music_result = None
+    music_reason = None
+    music_prompt = str(payload.get("music_prompt") or "").strip()
+    music_model = str(payload.get("music_model", "music.ace-step-1.5"))
+    if music_prompt:
+        if _model_available(model_manager, music_model):
+            try:
+                progress(80, "Generating local background music")
+                music_result = model_manager.run(
+                    music_model,
+                    {
+                        "prompt": music_prompt,
+                        "duration": max(10.0, total_duration),
+                        "instrumental": True,
+                        "project": project,
+                        "name": "short-background-music",
+                    },
+                    lambda value, message: progress(80 + int(value * 0.06), message),
+                )
+                outputs.append(music_result)
+                mixed = unique_path(media_output_dir("audio", project), "short-narration-music", ".mp3")
+                ffmpeg.mix_background_music(audio_track, Path(music_result["output_path"]), mixed, music_volume=float(payload.get("music_volume", 0.12)))
+                audio_track = mixed
+                outputs.append(output_response("audio", "mix-background", mixed).model_dump())
+            except Exception as exc:
+                if exc.__class__.__name__ == "JobCancelled":
+                    raise
+                music_reason = str(exc)
+        else:
+            music_reason = f"{music_model} is not available."
+
+    sfx_results: list[dict[str, Any]] = []
+    sfx_reason = None
+    sfx_model = str(payload.get("sfx_model", "audio.stable-audio-small-sfx"))
+    requested_cues = [(index, scene) for index, scene in enumerate(scenes) if scene.get("sfx_prompt")]
+    if requested_cues:
+        if _model_available(model_manager, sfx_model):
+            cues: list[tuple[Path, float, float]] = []
+            start = 0.0
+            starts = []
+            for duration in durations:
+                starts.append(start)
+                start += duration
+            for cue_index, (scene_index, scene) in enumerate(requested_cues):
+                try:
+                    generated_sfx = model_manager.run(
+                        sfx_model,
+                        {
+                            "prompt": str(scene["sfx_prompt"]),
+                            "duration": min(8.0, durations[scene_index]),
+                            "project": project,
+                            "name": f"short-sfx-{scene_index + 1}",
+                        },
+                        lambda value, message, i=cue_index: progress(87 + int(((i + value / 100) / len(requested_cues)) * 5), message),
+                    )
+                    sfx_results.append(generated_sfx)
+                    outputs.append(generated_sfx)
+                    cues.append((Path(generated_sfx["output_path"]), starts[scene_index], float(scene.get("sfx_volume", 0.35))))
+                except Exception as exc:
+                    if exc.__class__.__name__ == "JobCancelled":
+                        raise
+                    sfx_reason = str(exc)
+                    break
+            if cues:
+                sfx_mix = unique_path(media_output_dir("audio", project), "short-final-audio", ".mp3")
+                ffmpeg.overlay_audio_cues(audio_track, cues, sfx_mix)
+                audio_track = sfx_mix
+                outputs.append(output_response("audio", "mix-sound-effects", sfx_mix).model_dump())
+        else:
+            sfx_reason = f"{sfx_model} is not available."
+
+    validation = ffmpeg.analyze_audio(audio_track)
+    progress(94, "Muxing the final Short audio")
     muxed = unique_path(media_output_dir("video", project), "youtube-short", ".mp4")
-    ffmpeg.mux_audio(silent_video, normalized_audio, muxed)
+    ffmpeg.mux_audio(silent_video, audio_track, muxed)
     final_path = muxed
     if bool(payload.get("burn_subtitles", False)) and subtitles:
         burned = unique_path(media_output_dir("video", project), "youtube-short-subtitled", ".mp4")
@@ -482,7 +504,10 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
             "scenes": scene_records,
             "motion_requested": use_motion,
             "motion_disabled_reason": motion_disabled_reason,
+            "music_disabled_reason": music_reason,
+            "sound_effects_disabled_reason": sfx_reason,
             "subtitles_path": subtitles.get("output_path") if subtitles else None,
+            "audio_validation": validation,
         },
     )
     progress(100, "AI Short workflow completed")
@@ -491,9 +516,122 @@ def _ai_short(payload: dict[str, Any], model_manager: Any, progress: Any) -> dic
         "output": final_output,
         "duration_seconds": round(total_duration, 3),
         "scenes": scene_records,
+        "music": music_result,
+        "sound_effects": sfx_results,
         "subtitles": subtitles,
+        "audio_validation": validation,
         "manifest_path": str(manifest_path),
         "motion_disabled_reason": motion_disabled_reason,
+        "music_disabled_reason": music_reason,
+        "sound_effects_disabled_reason": sfx_reason,
+    }
+
+
+def _podcast(payload: dict[str, Any], model_manager: Any, progress: Any) -> dict[str, Any]:
+    title = str(payload.get("title", "")).strip()
+    segments = list(payload.get("segments") or [])
+    if not title or not segments:
+        raise MediaError("youtube.podcast requires a title and at least one segment.")
+    project = payload.get("project")
+    workflow_dir = unique_directory(media_output_dir("workflow", project), "youtube-podcast")
+    outputs: list[dict[str, Any]] = []
+    audio_segments: list[Path] = []
+    pauses: list[float] = []
+    transcript_lines = [title, ""]
+
+    for index, segment in enumerate(segments):
+        speaker = str(segment.get("speaker", f"Speaker {index + 1}"))
+        text = str(segment.get("text", "")).strip()
+        model_id = str(segment.get("tts_model") or payload.get("narration_model", "speech.kokoro"))
+        request = {
+            "text": text,
+            "voice": segment.get("voice") or payload.get("default_voice", "af_heart"),
+            "language": segment.get("language", "en"),
+            "reference_path": segment.get("reference_path"),
+            "consent_id": segment.get("consent_id"),
+            "project": project,
+            "name": f"podcast-{index + 1}-{speaker}",
+        }
+        progress(5 + int((index / len(segments)) * 50), f"Generating speech for {speaker}")
+        generated = model_manager.run(
+            model_id,
+            {key: value for key, value in request.items() if value is not None},
+            lambda value, message, i=index: progress(5 + int(((i + value / 100) / len(segments)) * 50), message),
+        )
+        outputs.append(generated)
+        audio_segments.append(Path(generated["output_path"]))
+        pauses.append(float(segment.get("pause_after", 0.35)))
+        transcript_lines.extend([f"{speaker}:", text, ""])
+
+    progress(58, "Assembling podcast dialogue")
+    dialogue = unique_path(media_output_dir("audio", project), "podcast-dialogue", ".mp3")
+    ffmpeg.concatenate_audio(audio_segments, dialogue, pauses=pauses)
+    outputs.append(output_response("audio", "concatenate", dialogue).model_dump())
+    episode_audio = dialogue
+    if bool(payload.get("normalize", True)):
+        normalized = unique_path(media_output_dir("audio", project), "podcast-dialogue-normalized", ".mp3")
+        ffmpeg.normalize_audio(dialogue, normalized)
+        episode_audio = normalized
+        outputs.append(output_response("audio", "normalize", normalized).model_dump())
+
+    music_result = None
+    music_reason = None
+    music_prompt = str(payload.get("music_prompt") or "").strip()
+    music_model = str(payload.get("music_model", "music.ace-step-1.5"))
+    if music_prompt:
+        if _model_available(model_manager, music_model):
+            try:
+                progress(72, "Generating podcast music bed")
+                duration = ffmpeg.probe_duration(episode_audio)
+                music_result = model_manager.run(
+                    music_model,
+                    {
+                        "prompt": music_prompt,
+                        "duration": max(10.0, duration),
+                        "instrumental": True,
+                        "project": project,
+                        "name": "podcast-music",
+                    },
+                    lambda value, message: progress(72 + int(value * 0.15), message),
+                )
+                outputs.append(music_result)
+                mixed = unique_path(media_output_dir("audio", project), "podcast-episode", ".mp3")
+                ffmpeg.mix_background_music(episode_audio, Path(music_result["output_path"]), mixed, music_volume=float(payload.get("music_volume", 0.08)))
+                episode_audio = mixed
+                outputs.append(output_response("audio", "mix-background", mixed).model_dump())
+            except Exception as exc:
+                if exc.__class__.__name__ == "JobCancelled":
+                    raise
+                music_reason = str(exc)
+        else:
+            music_reason = f"{music_model} is not available."
+
+    transcript_path = unique_path(workflow_dir, "podcast-transcript", ".txt")
+    transcript_path.write_text("\n".join(transcript_lines).rstrip() + "\n", encoding="utf-8")
+    validation = ffmpeg.analyze_audio(episode_audio)
+    final_output = output_response("audio", "podcast", episode_audio, "youtube.podcast").model_dump()
+    outputs.append(final_output)
+    manifest_path = _manifest(
+        workflow_dir,
+        "youtube-podcast",
+        payload,
+        outputs,
+        extra={
+            "title": title,
+            "transcript_path": str(transcript_path),
+            "audio_validation": validation,
+            "music_disabled_reason": music_reason,
+        },
+    )
+    progress(100, "Podcast workflow completed")
+    return {
+        "workflow": "youtube.podcast",
+        "output": final_output,
+        "transcript_path": str(transcript_path),
+        "music": music_result,
+        "music_disabled_reason": music_reason,
+        "audio_validation": validation,
+        "manifest_path": str(manifest_path),
     }
 
 
@@ -514,10 +652,7 @@ def _scene_durations(scenes: list[dict[str, Any]], total_duration: float) -> lis
         return result
 
     weights = [
-        value if value is not None else max(
-            1.0,
-            len(str(scene.get("text") or scene.get("prompt") or "").split()) / 8,
-        )
+        value if value is not None else max(1.0, len(str(scene.get("text") or scene.get("prompt") or "").split()) / 8)
         for value, scene in zip(explicit, scenes, strict=True)
     ]
     weight_total = sum(weights) or float(len(scenes))

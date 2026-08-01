@@ -1,38 +1,35 @@
 # AI Media Toolkit
 
-One local FastAPI application for building YouTube media workflows with open-source models.
+One local FastAPI application for creating YouTube media with open-source models.
 
-The application is designed for a single workstation with an RTX 4060 Ti 8GB. Heavy GPU jobs run one at a time, and only one model adapter remains loaded in memory.
+The runtime targets a single RTX 4060 Ti 8GB workstation. GPU-heavy jobs run one at a time, only one model stays loaded, and every model run records local timing and VRAM information when available.
 
 ## What works
 
 Runtime:
 
-- persistent SQLite jobs
+- persistent SQLite job queue
 - one serialized GPU worker
-- progress, cancellation, restart recovery, and readable errors
-- configuration-backed model registry
 - automatic model swapping and unloading
+- progress, cancellation, restart recovery, and readable failures
+- GPU and VRAM diagnostics
+- append-only local benchmark history
 - reproducible workflow manifests
 
 Queued local models:
 
-- `speech.kokoro`
-- `speech.faster-whisper`
-- `audio.bark`
-- `image.sana-1.6b-int4`
-- `image.sdxl-inpaint`
-- `image.birefnet-lite`
-- `image.realesrgan-ncnn`
-- `vision.florence-2-large`
+- Kokoro, faster-whisper, and Bark
+- Sana 1.6B INT4 and SDXL inpainting
+- Florence-2 and BiRefNet Lite
+- Real-ESRGAN NCNN
+- LTX-Video with an external Q8 backend or an official Diffusers low-VRAM fallback
 
 Creator workflows:
 
 - `youtube.narration`
 - `youtube.social-clip-prep`
 - `youtube.thumbnail`
-
-LTX-VideoQ8 and ACE-Step remain planned and cannot be queued yet.
+- `youtube.ai-short`
 
 ## Quick start
 
@@ -50,41 +47,42 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Install local image models
+## Optional model groups
 
-Install the CUDA-enabled PyTorch build appropriate for your machine, then:
+Install only the capabilities you need after installing a compatible CUDA-enabled PyTorch build:
 
 ```bash
+python -m pip install -r requirements-speech.txt
 python -m pip install -r requirements-image.txt
 python -m pip install -r requirements-vision.txt
+python -m pip install -r requirements-video.txt
 ```
 
-Sana INT4 requires an official Nunchaku wheel matching your Python, PyTorch, CUDA, and operating system. Do not install the unrelated PyPI package named `nunchaku`.
+Sana INT4 requires the official Nunchaku wheel matching Python, PyTorch, CUDA, and the operating system. Real-ESRGAN uses its official NCNN Vulkan executable.
 
-For optional Real-ESRGAN upscaling, download the official `realesrgan-ncnn-vulkan` executable and either add it to `PATH` or set:
+LTX has two local backends:
 
-```text
-REALESRGAN_NCNN_PATH=C:/tools/realesrgan/realesrgan-ncnn-vulkan.exe
-```
+1. Configure `LTX_Q8_REPO_PATH` and `LTX_Q8_PYTHON` for the patched Ada-optimized Q8 environment.
+2. Leave them empty to use the official Diffusers backend with FP8 layerwise casting, VAE tiling, and CPU or group offloading.
 
-Review each downloaded model's license before publishing or monetizing generated work.
-
-## Create a thumbnail
+## Create an AI Short
 
 ```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.thumbnail \
+curl -X POST http://127.0.0.1:8000/workflows/youtube.ai-short \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "BUILD AI VIDEOS LOCALLY",
-    "prompt": "a creator editing a futuristic video studio, cinematic lighting, strong subject, empty space on the left",
-    "project": "local-ai-video",
-    "count": 4,
-    "seed": 42,
-    "subject_path": "C:/photos/creator.png"
+    "script": "Local AI tools can now create a complete short on one computer.",
+    "project": "local-ai-short",
+    "scenes": [
+      {"prompt": "a cinematic workstation running local AI models"},
+      {"prompt": "a vertical video timeline with generated media"}
+    ],
+    "use_motion": true,
+    "fallback_to_stills": true
   }'
 ```
 
-The workflow generates candidates sequentially, analyzes and scores them, optionally removes a subject background, optionally upscales the chosen image, and renders exact 1280×720 text with Pillow.
+The workflow creates narration, scene images, optional LTX motion clips, a still-image fallback, subtitles when faster-whisper is available, a final vertical MP4, and a manifest.
 
 Check the returned job:
 
@@ -95,30 +93,14 @@ curl http://127.0.0.1:8000/jobs/JOB_ID
 ## Main API groups
 
 ```text
-/jobs          submit, list, inspect, and cancel queued work
-/models        inspect configured models and unload the active model
-/workflows     inspect and run complete YouTube workflows
-/audio         direct audio utilities
-/image         direct image utilities
-/video         direct video utilities
+/jobs          queued work and status
+/models        local model availability and unloading
+/workflows     complete creator pipelines
+/system        GPU details and benchmark history
+/audio         audio utilities
+/image         queued image jobs and presets
+/video         queued LTX generation and FFmpeg utilities
 /outputs       generated local artifacts
-```
-
-## Structure
-
-```text
-app/
-  adapters/     replaceable local model implementations
-  core/         model contracts and registry
-  runtime/      SQLite jobs, model manager, and one worker
-  workflows/    complete content-creation pipelines
-  routes/       FastAPI endpoints
-  services/     direct media operations
-  utils/        FFmpeg, files, transcription, and image composition
-models.json     model profiles and 8GB defaults
-data/           local SQLite runtime state
-outputs/        generated artifacts and manifests
-docs/           usage, checklist, and roadmap
 ```
 
 ## Documentation
@@ -130,4 +112,4 @@ docs/           usage, checklist, and roadmap
 
 ## License
 
-Application source: MIT. Model weights and third-party executables retain their own licenses.
+Application source: MIT. Model weights, custom kernels, and third-party executables retain their own licenses.

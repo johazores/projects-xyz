@@ -40,25 +40,88 @@
       "options": {"model": "suno/bark-small", "device": "auto"}
     },
     {
-      "id": "image.sana-1.5-int4",
+      "id": "image.sana-1.6b-int4",
       "capability": "image.generate",
       "adapter": "sana",
-      "description": "Planned 4-bit Sana 1.5 image generation for 8GB GPUs.",
-      "implemented": false,
+      "description": "Sana 1.6B image generation using the official Nunchaku INT4 transformer.",
+      "implemented": true,
       "recommended": true,
       "vram_gb": 8,
       "dependency_group": "image",
-      "notes": "Next image-generation milestone. Use the official quantized runtime rather than BF16 Diffusers."
+      "packages": ["torch", "diffusers", "nunchaku", "PIL"],
+      "notes": "Install the Nunchaku wheel matching Python, PyTorch, CUDA, and Windows or Linux. Never install the unrelated PyPI package named nunchaku.",
+      "options": {
+        "base_model": "Efficient-Large-Model/Sana_1600M_1024px_BF16_diffusers",
+        "transformer_model": "nunchaku-tech/nunchaku-sana/svdq-int4_r32-sana1.6b.safetensors",
+        "variant": "bf16",
+        "width": 1024,
+        "height": 576,
+        "steps": 20,
+        "guidance": 4.5,
+        "max_pixels": 1048576
+      }
     },
     {
       "id": "image.sdxl-inpaint",
       "capability": "image.inpaint",
       "adapter": "sdxl-inpaint",
-      "description": "Planned SDXL local inpainting with CPU offload and VAE tiling.",
-      "implemented": false,
+      "description": "SDXL local inpainting with model CPU offload and VAE tiling.",
+      "implemented": true,
       "recommended": true,
       "vram_gb": 8,
-      "dependency_group": "image"
+      "dependency_group": "image",
+      "packages": ["torch", "diffusers", "PIL"],
+      "notes": "Slower than normal image generation because model components are moved between CPU and GPU.",
+      "options": {
+        "model": "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
+        "steps": 30,
+        "guidance": 7.0,
+        "strength": 0.95
+      }
+    },
+    {
+      "id": "image.birefnet-lite",
+      "capability": "image.remove-background",
+      "adapter": "birefnet",
+      "description": "BiRefNet Lite foreground segmentation for thumbnail subject cutouts.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 2,
+      "dependency_group": "vision",
+      "packages": ["torch", "torchvision", "transformers", "PIL"],
+      "notes": "Uses the lightweight official checkpoint to minimize model switching time.",
+      "options": {"model": "ZhengPeng7/BiRefNet_lite", "resolution": 1024}
+    },
+    {
+      "id": "image.realesrgan-ncnn",
+      "capability": "image.upscale",
+      "adapter": "realesrgan-ncnn",
+      "description": "Real-ESRGAN NCNN Vulkan upscaling with tiled processing.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 3,
+      "dependency_group": "image-tools",
+      "executable": "realesrgan-ncnn-vulkan",
+      "notes": "Set REALESRGAN_NCNN_PATH on Windows when the executable is not in PATH.",
+      "options": {
+        "executable_env": "REALESRGAN_NCNN_PATH",
+        "model_name": "realesrgan-x4plus",
+        "scale": 2,
+        "tile": 256
+      }
+    },
+    {
+      "id": "vision.florence-2-large",
+      "capability": "vision.caption",
+      "adapter": "florence",
+      "description": "Florence-2 captioning, OCR, detection, and region analysis.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 3,
+      "dependency_group": "vision",
+      "packages": ["torch", "transformers", "PIL"],
+      "notes": "Used for candidate descriptions and thumbnail relevance scoring.",
+      "options": {"model": "florence-community/Florence-2-large"}
     },
     {
       "id": "video.ltx-q8",
@@ -80,16 +143,6 @@
       "recommended": true,
       "vram_gb": 8,
       "dependency_group": "music"
-    },
-    {
-      "id": "vision.florence-2-large",
-      "capability": "vision.caption",
-      "adapter": "florence",
-      "description": "Planned Florence-2 captioning, OCR, and grounding provider.",
-      "implemented": false,
-      "recommended": true,
-      "vram_gb": 3,
-      "dependency_group": "vision"
     }
   ]
 }

@@ -1,12 +1,26 @@
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import Field
 
-from app.models import AiShortWorkflowRequest, JobView, PodcastWorkflowRequest, ThumbnailWorkflowRequest, WorkflowView
+from app.models import AiShortWorkflowRequest, JobView, PodcastWorkflowRequest, ShortScene, ThumbnailWorkflowRequest, WorkflowView
 from app.runtime.state import worker
 from app.workflows.youtube import list_workflows, validate_workflow
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
+
+
+class PresetShortScene(ShortScene):
+    sfx_preset: str | None = Field(default=None, max_length=120)
+
+
+class ResumableAiShortRequest(AiShortWorkflowRequest):
+    scenes: list[PresetShortScene] = Field(min_length=1, max_length=12)
+    music_preset: str | None = Field(default=None, max_length=120)
+
+
+class ResumablePodcastRequest(PodcastWorkflowRequest):
+    music_preset: str | None = Field(default=None, max_length=120)
 
 
 @router.get("", response_model=list[WorkflowView])
@@ -21,13 +35,13 @@ def run_thumbnail(request: ThumbnailWorkflowRequest) -> JobView:
 
 
 @router.post("/youtube.ai-short", response_model=JobView, status_code=202)
-def run_ai_short(request: AiShortWorkflowRequest) -> JobView:
+def run_ai_short(request: ResumableAiShortRequest) -> JobView:
     validate_workflow("youtube.ai-short")
     return worker.submit("workflow", "youtube.ai-short", request.model_dump(exclude_none=True))
 
 
 @router.post("/youtube.podcast", response_model=JobView, status_code=202)
-def run_podcast(request: PodcastWorkflowRequest) -> JobView:
+def run_podcast(request: ResumablePodcastRequest) -> JobView:
     validate_workflow("youtube.podcast")
     return worker.submit("workflow", "youtube.podcast", request.model_dump(exclude_none=True))
 

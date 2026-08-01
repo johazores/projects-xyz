@@ -14,6 +14,7 @@ from app.adapters.birefnet import BiRefNetAdapter
 from app.adapters.faster_whisper import FasterWhisperAdapter
 from app.adapters.florence import FlorenceAdapter
 from app.adapters.kokoro import KokoroAdapter
+from app.adapters.ltx_video import LtxVideoAdapter
 from app.adapters.realesrgan import RealEsrganNcnnAdapter
 from app.adapters.sana import SanaAdapter
 from app.adapters.sdxl_inpaint import SdxlInpaintAdapter
@@ -28,6 +29,7 @@ ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
     "faster-whisper": FasterWhisperAdapter,
     "florence": FlorenceAdapter,
     "kokoro": KokoroAdapter,
+    "ltx-video": LtxVideoAdapter,
     "realesrgan-ncnn": RealEsrganNcnnAdapter,
     "sana": SanaAdapter,
     "sdxl-inpaint": SdxlInpaintAdapter,
@@ -60,10 +62,17 @@ class ModelRegistry:
     def is_available(self, spec: ModelSpec) -> bool:
         if not spec.implemented:
             return False
-        packages_available = all(
-            importlib.util.find_spec(name) is not None for name in spec.packages
-        )
+        packages_available = all(importlib.util.find_spec(name) is not None for name in spec.packages)
+        if spec.options.get("availability") == "packages-or-external":
+            return packages_available or self._external_repo_available(spec)
         return packages_available and self._executable_available(spec)
+
+    @staticmethod
+    def _external_repo_available(spec: ModelSpec) -> bool:
+        env_name = str(spec.options.get("external_repo_env", ""))
+        entrypoint = str(spec.options.get("external_entrypoint", "inference.py"))
+        value = os.getenv(env_name) if env_name else None
+        return bool(value and (Path(value).expanduser() / entrypoint).is_file())
 
     @staticmethod
     def _executable_available(spec: ModelSpec) -> bool:
@@ -71,11 +80,7 @@ class ModelRegistry:
             return True
         env_name = str(spec.options.get("executable_env", ""))
         configured = os.getenv(env_name) if env_name else None
-        for candidate in (
-            configured,
-            spec.options.get("executable"),
-            spec.executable,
-        ):
+        for candidate in (configured, spec.options.get("executable"), spec.executable):
             if not candidate:
                 continue
             path = Path(str(candidate)).expanduser()

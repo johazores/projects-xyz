@@ -1,0 +1,8 @@
+# Install a compatible CUDA-enabled torch build separately.
+diffusers>=0.37.1,<0.38
+transformers>=4.47,<5
+accelerate>=1.2,<2
+safetensors>=0.4,<1
+sentencepiece>=0.2,<1
+imageio>=2.36,<3
+imageio-ffmpeg>=0.5,<1

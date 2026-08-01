@@ -126,13 +126,28 @@
     {
       "id": "video.ltx-q8",
       "capability": "video.generate",
-      "adapter": "ltx-q8",
-      "description": "Planned LTX-VideoQ8 text-to-video and image-to-video provider.",
-      "implemented": false,
+      "adapter": "ltx-video",
+      "description": "Low-VRAM LTX-Video text-to-video and image-to-video generation for an RTX 4060 Ti.",
+      "implemented": true,
       "recommended": true,
       "vram_gb": 8,
       "dependency_group": "video",
-      "notes": "Target 720x480, 121 frames, batch size one."
+      "packages": ["torch", "diffusers", "transformers", "accelerate", "PIL"],
+      "notes": "Uses an external patched Q8-kernel environment for fastest text-to-video when configured; otherwise uses official Diffusers FP8 layerwise casting and group offloading. Real target-hardware benchmarking is still required.",
+      "options": {
+        "availability": "packages-or-external",
+        "external_repo_env": "LTX_Q8_REPO_PATH",
+        "external_python_env": "LTX_Q8_PYTHON",
+        "external_entrypoint": "inference.py",
+        "q8_transformer": "sayakpaul/q8-ltx-video",
+        "base_model": "Lightricks/LTX-Video",
+        "width": 576,
+        "height": 320,
+        "num_frames": 65,
+        "steps": 20,
+        "fps": 24,
+        "max_pixels": 337920
+      }
     },
     {
       "id": "music.ace-step-1.5",

@@ -1,20 +1,13 @@
-"""Video request manifests, resizing, and frame extraction."""
+"""Deterministic video resizing and frame extraction."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
 
-from app.models import GenerateRequest, MediaOutput, VideoFramesRequest, VideoResizeRequest
+from app.models import MediaOutput, VideoFramesRequest, VideoResizeRequest
 from app.utils import ffmpeg
-from app.utils.files import (
-    MediaError,
-    existing_file,
-    media_output_dir,
-    output_response,
-    unique_directory,
-    unique_path,
-)
+from app.utils.files import existing_file, media_output_dir, output_response, unique_directory, unique_path
 
 VIDEO_PRESETS = {
     "youtube": (1920, 1080),
@@ -22,29 +15,6 @@ VIDEO_PRESETS = {
     "square": (1080, 1080),
     "720p": (1280, 720),
 }
-
-
-def generate(request: GenerateRequest) -> MediaOutput:
-    provider = request.provider.strip().lower()
-    if provider != "demo":
-        raise MediaError("Unknown video provider. Available providers: demo.")
-
-    destination = unique_path(
-        media_output_dir("video", request.project), request.prompt, ".json"
-    )
-    destination.write_text(
-        json.dumps(
-            {
-                "prompt": request.prompt,
-                "provider": provider,
-                "status": "prepared",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
-    )
-    return output_response("video", "generate", destination, provider)
 
 
 def resize(request: VideoResizeRequest) -> MediaOutput:
@@ -64,7 +34,6 @@ def frames(request: VideoFramesRequest) -> MediaOutput:
     root = media_output_dir("video", request.project)
     frames_dir = unique_directory(root, f"{source.stem}-frames")
     ffmpeg.extract_frames(source, frames_dir / "frame-%06d.png", request.fps)
-
     frame_names = sorted(path.name for path in frames_dir.glob("frame-*.png"))
     manifest = unique_path(root, f"{source.stem}-frames", ".json")
     manifest.write_text(

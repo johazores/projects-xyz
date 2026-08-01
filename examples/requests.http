@@ -3,11 +3,94 @@
 ### Health
 GET {{host}}/health
 
+### GPU diagnostics
+GET {{host}}/system/gpu
+
+### Benchmark history
+GET {{host}}/system/benchmarks
+
 ### Models
 GET {{host}}/models
 
 ### Workflows
 GET {{host}}/workflows
+
+### Queue direct Sana generation
+POST {{host}}/image/generate
+Content-Type: application/json
+
+{
+  "prompt": "a cinematic local AI workstation",
+  "project": "image-test",
+  "count": 2,
+  "width": 1024,
+  "height": 576,
+  "seed": 42
+}
+
+### Queue multiple image prompts
+POST {{host}}/image/generate-batch
+Content-Type: application/json
+
+{
+  "prompts": [
+    "a cinematic local AI workstation",
+    "a vertical video editing timeline"
+  ],
+  "project": "image-batch",
+  "width": 576,
+  "height": 1024,
+  "seed": 100
+}
+
+### Queue LTX text-to-video
+POST {{host}}/video/generate
+Content-Type: application/json
+
+{
+  "prompt": "slow cinematic movement through a futuristic local AI studio",
+  "project": "video-test",
+  "width": 576,
+  "height": 320,
+  "num_frames": 65,
+  "steps": 20,
+  "seed": 42
+}
+
+### Queue LTX image-to-video
+POST {{host}}/video/generate
+Content-Type: application/json
+
+{
+  "prompt": "subtle camera push-in and natural screen glow",
+  "input_path": "C:/images/scene.png",
+  "project": "video-test",
+  "width": 320,
+  "height": 576,
+  "num_frames": 65,
+  "steps": 20
+}
+
+### Queue AI Short workflow
+POST {{host}}/workflows/youtube.ai-short
+Content-Type: application/json
+
+{
+  "script": "This complete short is prepared using local open-source AI models.",
+  "project": "local-ai-short",
+  "scenes": [
+    {
+      "prompt": "a developer using a powerful local AI workstation",
+      "text": "Start with a local script and narration"
+    },
+    {
+      "prompt": "a vertical video timeline filled with generated images",
+      "text": "Then assemble the final Short"
+    }
+  ],
+  "use_motion": true,
+  "fallback_to_stills": true
+}
 
 ### Queue thumbnail workflow
 POST {{host}}/workflows/youtube.thumbnail
@@ -15,69 +98,10 @@ Content-Type: application/json
 
 {
   "title": "BUILD AI VIDEOS LOCALLY",
-  "prompt": "a creator in a futuristic local AI video studio, dramatic lighting, strong subject, empty space on the left",
+  "prompt": "a creator in a futuristic local AI video studio, dramatic lighting, empty space on the left",
   "project": "local-ai-video",
   "count": 4,
-  "width": 1024,
-  "height": 576,
-  "steps": 20,
-  "guidance": 4.5,
-  "seed": 42,
-  "subject_path": "C:/photos/creator.png"
-}
-
-### Queue direct Sana generation
-POST {{host}}/jobs
-Content-Type: application/json
-
-{
-  "kind": "model",
-  "target": "image.sana-1.6b-int4",
-  "payload": {
-    "prompt": "a clean technology thumbnail background",
-    "project": "thumbnail-test",
-    "count": 2,
-    "seed": 100
-  }
-}
-
-### Queue SDXL inpainting
-POST {{host}}/jobs
-Content-Type: application/json
-
-{
-  "kind": "model",
-  "target": "image.sdxl-inpaint",
-  "payload": {
-    "input_path": "C:/images/source.png",
-    "mask_path": "C:/images/mask.png",
-    "prompt": "replace the masked area with a clean studio desk",
-    "project": "thumbnail-test"
-  }
-}
-
-### Queue Kokoro narration
-POST {{host}}/workflows/youtube.narration
-Content-Type: application/json
-
-{
-  "text": "Welcome to my local AI media studio.",
-  "project": "channel-intro",
-  "model": "speech.kokoro",
-  "voice": "af_heart",
-  "normalize": true
-}
-
-### Queue social clip preparation
-POST {{host}}/workflows/youtube.social-clip-prep
-Content-Type: application/json
-
-{
-  "input_path": "C:/videos/source.mp4",
-  "project": "episode-12",
-  "preset": "shorts",
-  "transcribe": true,
-  "extract_fps": 0.2
+  "seed": 42
 }
 
 ### List jobs

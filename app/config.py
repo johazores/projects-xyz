@@ -31,6 +31,9 @@ class Settings:
     database_path: Path = Path(
         os.getenv("MEDIA_JOBS_DATABASE", str(ROOT_DIR / "data" / "jobs.db"))
     ).expanduser().resolve()
+    benchmarks_path: Path = Path(
+        os.getenv("MEDIA_BENCHMARKS_FILE", str(ROOT_DIR / "data" / "benchmarks.jsonl"))
+    ).expanduser().resolve()
     audio_model: str = os.getenv("MEDIA_AUDIO_MODEL", "suno/bark-small")
     audio_device: str = os.getenv("MEDIA_AUDIO_DEVICE", "auto")
     transcription_model: str = os.getenv("MEDIA_TRANSCRIPTION_MODEL", "small")

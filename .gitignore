@@ -13,3 +13,5 @@ outputs/*
 !outputs/**/.gitkeep
 data/*.db
 data/*.db-*
+data/*.jsonl
+data/*.jsonl-*

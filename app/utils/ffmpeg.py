@@ -1,10 +1,11 @@
-"""Focused FFmpeg operations used by audio and video routes."""
+"""Focused FFmpeg operations used by local media workflows."""
 
 from __future__ import annotations
 
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 
 from app.utils.files import MediaError
 
@@ -13,7 +14,6 @@ def run_ffmpeg(arguments: list[str]) -> None:
     executable = shutil.which("ffmpeg")
     if not executable:
         raise MediaError("FFmpeg is required. Install it and confirm `ffmpeg -version` works.")
-
     result = subprocess.run(
         [executable, "-y", *arguments],
         capture_output=True,
@@ -23,6 +23,31 @@ def run_ffmpeg(arguments: list[str]) -> None:
     if result.returncode != 0:
         lines = result.stderr.strip().splitlines()
         raise MediaError(lines[-1] if lines else "FFmpeg failed.")
+
+
+def probe_duration(source: Path) -> float:
+    executable = shutil.which("ffprobe")
+    if not executable:
+        raise MediaError("ffprobe is required and is normally installed with FFmpeg.")
+    result = subprocess.run(
+        [
+            executable,
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(source),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    try:
+        duration = float(result.stdout.strip())
+    except ValueError as exc:
+        raise MediaError("Unable to determine media duration.") from exc
+    if result.returncode != 0 or duration <= 0:
+        raise MediaError("Unable to determine media duration.")
+    return duration
 
 
 def convert_audio(source: Path, destination: Path) -> None:
@@ -49,13 +74,11 @@ def trim_audio(source: Path, destination: Path, start: float, duration: float) -
 
 
 def resize_video(source: Path, destination: Path, width: int, height: int) -> None:
-    filter_value = (
-        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
-        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
-    )
     run_ffmpeg([
-        "-i", str(source), "-vf", filter_value,
+        "-i", str(source),
+        "-vf", _fit_filter(width, height),
         "-c:v", "libx264", "-crf", "20", "-preset", "medium",
+        "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
         str(destination),
     ])
@@ -63,3 +86,103 @@ def resize_video(source: Path, destination: Path, width: int, height: int) -> No
 
 def extract_frames(source: Path, output_pattern: Path, fps: float) -> None:
     run_ffmpeg(["-i", str(source), "-vf", f"fps={fps}", str(output_pattern)])
+
+
+def create_image_clip(
+    source: Path,
+    destination: Path,
+    *,
+    duration: float,
+    width: int,
+    height: int,
+    fps: int,
+) -> None:
+    run_ffmpeg([
+        "-loop", "1",
+        "-i", str(source),
+        "-t", f"{duration:.3f}",
+        "-vf", f"{_fit_filter(width, height)},fps={fps}",
+        "-an",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "20",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        str(destination),
+    ])
+
+
+def normalize_video_clip(
+    source: Path,
+    destination: Path,
+    *,
+    duration: float,
+    width: int,
+    height: int,
+    fps: int,
+) -> None:
+    run_ffmpeg([
+        "-stream_loop", "-1",
+        "-i", str(source),
+        "-t", f"{duration:.3f}",
+        "-vf", f"{_fit_filter(width, height)},fps={fps}",
+        "-an",
+        "-c:v", "libx264",
+        "-preset", "veryfast",
+        "-crf", "20",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        str(destination),
+    ])
+
+
+def concatenate_videos(sources: list[Path], destination: Path) -> None:
+    if not sources:
+        raise MediaError("At least one video clip is required.")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".txt", encoding="utf-8", delete=False,
+        dir=destination.parent,
+    ) as handle:
+        list_path = Path(handle.name)
+        for source in sources:
+            escaped = str(source.resolve()).replace("'", "'\\''")
+            handle.write(f"file '{escaped}'\n")
+    try:
+        run_ffmpeg([
+            "-f", "concat", "-safe", "0", "-i", str(list_path),
+            "-c", "copy", "-movflags", "+faststart", str(destination),
+        ])
+    finally:
+        list_path.unlink(missing_ok=True)
+
+
+def mux_audio(video: Path, audio: Path, destination: Path) -> None:
+    run_ffmpeg([
+        "-i", str(video),
+        "-i", str(audio),
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-shortest",
+        "-movflags", "+faststart",
+        str(destination),
+    ])
+
+
+def burn_subtitles(source: Path, subtitles: Path, destination: Path) -> None:
+    subtitle_value = str(subtitles.resolve()).replace("\\", "/")
+    subtitle_value = subtitle_value.replace(":", "\\:").replace("'", "\\'")
+    run_ffmpeg([
+        "-i", str(source),
+        "-vf", f"subtitles='{subtitle_value}'",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+        "-c:a", "copy", "-movflags", "+faststart", str(destination),
+    ])
+
+
+def _fit_filter(width: int, height: int) -> str:
+    return (
+        f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
+        f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
+    )

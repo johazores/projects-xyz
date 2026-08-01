@@ -9,182 +9,128 @@ python -m app
 
 Open `http://127.0.0.1:8000/docs`.
 
-## Local audio environments
+## Project runs and resume
 
-### ACE-Step 1.5 music
+Workflow submissions automatically create a durable project run under `data/projects/`. The completed job result includes `project_run_id`.
 
-Install ACE-Step from its official repository in a separate environment and launch its REST server:
+List project runs:
 
 ```bash
-git clone https://github.com/ace-step/ACE-Step-1.5.git
-cd ACE-Step-1.5
-uv sync
-uv run acestep-api
+curl http://127.0.0.1:8000/projects/runs
+curl "http://127.0.0.1:8000/projects/runs?project=local-ai-short"
 ```
 
-For an 8GB GPU, use the ACE-Step 2B Turbo model, the `acestep-5Hz-lm-0.6B` planner, the PyTorch LM backend, INT8 quantization, and CPU offload in the ACE-Step configuration.
+Inspect one run:
 
-Configure this application:
+```bash
+curl http://127.0.0.1:8000/projects/runs/PROJECT_RUN_ID
+```
+
+Resume a failed or cancelled run:
+
+```bash
+curl -X POST http://127.0.0.1:8000/projects/runs/PROJECT_RUN_ID/resume
+```
+
+Each model call has a deterministic checkpoint based on the model ID and payload. A checkpoint is reused only when all recorded output paths still exist. FFmpeg assembly is intentionally rerun so final media is rebuilt from verified inputs.
+
+## Readiness
+
+```bash
+curl http://127.0.0.1:8000/system/readiness
+curl http://127.0.0.1:8000/system/storage
+```
+
+Readiness reports:
+
+- output and data directory write access
+- FFmpeg and FFprobe availability
+- free disk space against `MEDIA_MIN_DISK_FREE_GB`
+- implemented and currently available model counts
+- configured model cache location and size
+
+Optional configuration:
 
 ```env
-ACESTEP_API_URL=http://127.0.0.1:8001
-ACESTEP_API_KEY=
+MEDIA_PROJECT_RUNS_DIR=data/projects
+MEDIA_AUDIO_PRESETS_FILE=audio-presets.json
+MEDIA_MODEL_CACHE_DIR=C:/Users/name/.cache/huggingface
+MEDIA_MIN_DISK_FREE_GB=10
 ```
 
-Only localhost URLs are accepted.
+## Safe cleanup
 
-### Stable Audio 3 sound effects
-
-Install Stable Audio 3 from its official repository. Point this application to the generated `stable-audio` executable:
-
-```env
-STABLE_AUDIO_CLI=C:/models/stable-audio-3/.venv/Scripts/stable-audio.exe
-```
-
-The adapter uses `small-sfx`, which can run on CPU and avoids competing with image and video models for VRAM.
-
-### Chatterbox expressive voices
-
-Use Python 3.11 for the Chatterbox environment:
+Preview project cleanup:
 
 ```bash
-python -m pip install -r requirements-voices.txt
-```
-
-Chatterbox Turbo requires a reference clip. Multilingual V3 can use its default voice or a consented reference voice.
-
-## Register voice consent
-
-```bash
-curl -X POST http://127.0.0.1:8000/voices/consents \
+curl -X POST http://127.0.0.1:8000/system/cleanup \
   -H "Content-Type: application/json" \
   -d '{
-    "voice_name": "Channel host",
-    "owner_name": "Voice owner",
-    "reference_path": "C:/voices/host-reference.wav",
-    "usage_scope": "Narration and podcast episodes for this local project",
-    "confirmed": true
+    "project": "local-ai-short",
+    "include_project_runs": true
   }'
 ```
 
-The record stores a SHA-256 fingerprint of the reference clip. Chatterbox rejects a missing, revoked, or mismatched consent record.
-
-List or revoke records:
+Delete only after reviewing the preview:
 
 ```bash
-curl http://127.0.0.1:8000/voices/consents
-curl -X DELETE http://127.0.0.1:8000/voices/consents/CONSENT_ID
-```
-
-## Generate expressive speech
-
-```bash
-curl -X POST http://127.0.0.1:8000/audio-ai/speech \
+curl -X POST http://127.0.0.1:8000/system/cleanup \
   -H "Content-Type: application/json" \
   -d '{
-    "text": "Welcome back to the channel [chuckle].",
-    "model": "speech.chatterbox-turbo",
-    "reference_path": "C:/voices/host-reference.wav",
-    "consent_id": "CONSENT_ID",
-    "project": "episode-01"
+    "project": "local-ai-short",
+    "include_project_runs": true,
+    "dry_run": false,
+    "confirm": true
   }'
 ```
 
-## Generate music
+Cleanup rules:
+
+- active queued or running projects are rejected
+- configured root directories are never deleted
+- paths outside configured output or cache directories are rejected
+- model-cache cleanup requires `MEDIA_MODEL_CACHE_DIR`, `include_model_cache=true`, and confirmation
+- cache cleanup removes its contents while preserving the configured cache root
+
+## Audio presets
+
+List presets:
+
+```bash
+curl http://127.0.0.1:8000/audio-ai/presets
+```
+
+Generate music with a preset:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/audio-ai/music \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "calm futuristic documentary music, instrumental, subtle pulse",
+    "prompt": "local AI creator episode",
+    "preset": "technology-bed",
     "duration": 30,
-    "instrumental": true,
     "project": "episode-01"
   }'
 ```
 
-ACE-Step runs asynchronously on its localhost server. The main job polls the local task and copies the completed audio into the project output folder.
-
-## Generate a sound effect
+Generate a transition effect:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/audio-ai/sound-effect \
   -H "Content-Type: application/json" \
   -d '{
-    "prompt": "clean cinematic technology transition whoosh",
-    "duration": 3,
+    "prompt": "between two scenes",
+    "preset": "soft-transition",
     "project": "episode-01"
   }'
 ```
 
-## Podcast workflow
+AI Shorts accept `music_preset` and per-scene `sfx_preset`. Podcasts accept `music_preset`.
+
+## Tests
 
 ```bash
-curl -X POST http://127.0.0.1:8000/workflows/youtube.podcast \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Local AI Creator Podcast",
-    "project": "podcast-01",
-    "music_prompt": "soft technology podcast music, instrumental",
-    "segments": [
-      {
-        "speaker": "Host",
-        "text": "Welcome to the show.",
-        "tts_model": "speech.kokoro",
-        "voice": "af_heart"
-      },
-      {
-        "speaker": "Guest",
-        "text": "Thanks for having me.",
-        "tts_model": "speech.chatterbox-multilingual-v3",
-        "language": "en",
-        "reference_path": "C:/voices/guest.wav",
-        "consent_id": "CONSENT_ID"
-      }
-    ]
-  }'
+python -m unittest -v tests.test_project_reliability
 ```
 
-The workflow generates each segment, inserts configured pauses, assembles and normalizes the dialogue, optionally mixes an ACE-Step music bed, writes a transcript, validates duration and peak volume, and creates a manifest.
-
-## Mixed AI Short
-
-Add `music_prompt` to generate a background bed. Add `sfx_prompt` to individual scenes to generate timed effects:
-
-```json
-{
-  "script": "A short local AI demonstration.",
-  "project": "short-01",
-  "music_prompt": "minimal electronic documentary underscore",
-  "music_volume": 0.12,
-  "scenes": [
-    {
-      "prompt": "a local AI workstation",
-      "sfx_prompt": "subtle computer startup sound",
-      "sfx_volume": 0.3
-    }
-  ]
-}
-```
-
-Music and sound effects are optional. If an optional backend is unavailable, the workflow still finishes with narration and visuals and records the reason in its manifest.
-
-## Audio validation
-
-Final podcast and Short audio records:
-
-- duration
-- mean volume
-- maximum volume
-- clipping-risk flag
-
-All mixes are normalized with FFmpeg. The application never silently publishes or uploads generated media.
-
-## Runtime rules for 8GB VRAM
-
-- Keep batch size at one.
-- Generate images and video before requesting ACE-Step music.
-- Keep Stable Audio Small-SFX on CPU.
-- Use one Chatterbox model at a time.
-- Prefer Kokoro for ordinary narration and Chatterbox only when expressive or multilingual speech is needed.
-- Review all cloned-voice consent records before sharing a project.
+The tests cover checkpoint reuse, missing-artifact reruns, resume identity, active-project cleanup protection, model-cache root preservation, readiness output, and preset capability validation.

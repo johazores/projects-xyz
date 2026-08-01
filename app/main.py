@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.routes import audio, image, jobs, models as model_routes, system, video, workflows
+from app.routes import audio, image, jobs, models as model_routes, music, system, video, voices, workflows
 from app.runtime.state import models, registry, worker
 from app.services.video import VIDEO_PRESETS
 from app.utils.files import MediaError
@@ -36,7 +36,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title=settings.app_name,
-    version="1.2.0",
+    version="1.3.0",
     description="Local-first AI content creation studio with a serialized GPU job queue.",
     lifespan=lifespan,
 )
@@ -48,6 +48,8 @@ for router in (
     jobs.router,
     model_routes.router,
     workflows.router,
+    music.router,
+    voices.router,
     system.router,
 ):
     app.include_router(router)
@@ -81,11 +83,12 @@ def health() -> dict[str, object]:
 @app.get("/capabilities")
 def capabilities() -> dict[str, object]:
     return {
-        "audio": ["generate", "convert", "normalize", "enhance", "trim", "transcribe"],
+        "audio": ["generate", "convert", "normalize", "enhance", "trim", "transcribe", "music", "sound-effect"],
         "image": ["queued-generate", "queued-batch", "queued-background-removal", "presets"],
         "video": ["generate", "resize", "frames", "ltx-text-to-video", "ltx-image-to-video"],
         "jobs": ["submit", "status", "list", "cancel"],
         "system": ["gpu", "benchmarks"],
+        "voices": ["consent-create", "consent-list", "consent-revoke"],
         "models": [spec.id for spec in registry.list() if spec.implemented],
         "planned_models": [spec.id for spec in registry.list() if not spec.implemented],
         "workflows": [workflow.id for workflow in list_workflows() if workflow.implemented],

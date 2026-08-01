@@ -1,0 +1,3 @@
+# ACE-Step and Stable Audio 3 are intentionally isolated from the main environment.
+# Start ACE-Step through its official `acestep-api` environment.
+# Install Stable Audio 3 through its official repository so the `stable-audio` CLI is available.

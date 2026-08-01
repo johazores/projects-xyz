@@ -11,3 +11,5 @@ outputs/*
 !outputs/image/
 !outputs/video/
 !outputs/**/.gitkeep
+data/*.db
+data/*.db-*

@@ -1,0 +1,95 @@
+{
+  "models": [
+    {
+      "id": "speech.kokoro",
+      "capability": "speech.tts",
+      "adapter": "kokoro",
+      "description": "Fast local narration using Kokoro-82M.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 2,
+      "dependency_group": "speech",
+      "packages": ["kokoro", "soundfile", "numpy"],
+      "notes": "Install espeak-ng. Best default for normal YouTube narration.",
+      "options": {"lang_code": "a", "voice": "af_heart"}
+    },
+    {
+      "id": "speech.faster-whisper",
+      "capability": "speech.stt",
+      "adapter": "faster-whisper",
+      "description": "Local transcripts and SRT subtitles using faster-whisper.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 4,
+      "dependency_group": "speech",
+      "packages": ["faster_whisper"],
+      "notes": "Configured for RTX 4060 Ti using large-v3-turbo and INT8/FP16.",
+      "options": {"model": "large-v3-turbo", "device": "cuda", "compute_type": "int8_float16"}
+    },
+    {
+      "id": "audio.bark",
+      "capability": "speech.tts",
+      "adapter": "bark",
+      "description": "Expressive local Bark text-to-audio provider.",
+      "implemented": true,
+      "recommended": false,
+      "vram_gb": 6,
+      "dependency_group": "bark",
+      "packages": ["numpy", "scipy", "torch", "transformers"],
+      "notes": "Slower than Kokoro and intended as an optional expressive mode.",
+      "options": {"model": "suno/bark-small", "device": "auto"}
+    },
+    {
+      "id": "image.sana-1.5-int4",
+      "capability": "image.generate",
+      "adapter": "sana",
+      "description": "Planned 4-bit Sana 1.5 image generation for 8GB GPUs.",
+      "implemented": false,
+      "recommended": true,
+      "vram_gb": 8,
+      "dependency_group": "image",
+      "notes": "Next image-generation milestone. Use the official quantized runtime rather than BF16 Diffusers."
+    },
+    {
+      "id": "image.sdxl-inpaint",
+      "capability": "image.inpaint",
+      "adapter": "sdxl-inpaint",
+      "description": "Planned SDXL local inpainting with CPU offload and VAE tiling.",
+      "implemented": false,
+      "recommended": true,
+      "vram_gb": 8,
+      "dependency_group": "image"
+    },
+    {
+      "id": "video.ltx-q8",
+      "capability": "video.generate",
+      "adapter": "ltx-q8",
+      "description": "Planned LTX-VideoQ8 text-to-video and image-to-video provider.",
+      "implemented": false,
+      "recommended": true,
+      "vram_gb": 8,
+      "dependency_group": "video",
+      "notes": "Target 720x480, 121 frames, batch size one."
+    },
+    {
+      "id": "music.ace-step-1.5",
+      "capability": "audio.music",
+      "adapter": "ace-step",
+      "description": "Planned ACE-Step 1.5 music generation using INT8 and CPU offload.",
+      "implemented": false,
+      "recommended": true,
+      "vram_gb": 8,
+      "dependency_group": "music"
+    },
+    {
+      "id": "vision.florence-2-large",
+      "capability": "vision.caption",
+      "adapter": "florence",
+      "description": "Planned Florence-2 captioning, OCR, and grounding provider.",
+      "implemented": false,
+      "recommended": true,
+      "vram_gb": 3,
+      "dependency_group": "vision"
+    }
+  ]
+}

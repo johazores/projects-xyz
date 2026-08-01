@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from datetime import datetime
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -68,3 +69,50 @@ class MediaOutput(BaseModel):
 
 class BatchOutput(BaseModel):
     items: list[MediaOutput]
+
+
+JobStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
+JobKind = Literal["model", "workflow"]
+
+
+class JobCreate(BaseModel):
+    kind: JobKind
+    target: str = Field(min_length=1, max_length=120)
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class JobView(BaseModel):
+    id: str
+    kind: JobKind
+    target: str
+    status: JobStatus
+    progress: int = Field(ge=0, le=100)
+    message: str | None = None
+    payload: dict[str, Any]
+    result: dict[str, Any] | None = None
+    error: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    cancel_requested: bool = False
+
+
+class ModelView(BaseModel):
+    id: str
+    capability: str
+    description: str
+    implemented: bool
+    recommended: bool
+    available: bool
+    active: bool
+    vram_gb: float | None = None
+    dependency_group: str | None = None
+    notes: str | None = None
+
+
+class WorkflowView(BaseModel):
+    id: str
+    description: str
+    implemented: bool
+    steps: list[str]

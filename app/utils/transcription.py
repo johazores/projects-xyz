@@ -14,34 +14,28 @@ class Segment(Protocol):
     text: str
 
 
-def transcribe(
-    source: Path,
-    destination: Path,
-    *,
-    model_name: str,
-    device: str,
-    compute_type: str,
-    language: str | None,
-    output_format: str,
-) -> None:
+def transcribe(source: Path, destination: Path, *, model_name: str, device: str, compute_type: str, language: str | None, output_format: str) -> None:
     try:
         from faster_whisper import WhisperModel
     except ImportError as exc:
-        raise MediaError(
-            "Transcription is optional. Install it with `pip install -r requirements-local.txt`."
-        ) from exc
-
+        raise MediaError("Transcription is optional. Install it with `pip install -r requirements-speech.txt`.") from exc
     model = WhisperModel(model_name, device=device, compute_type=compute_type)
-    segments, _ = model.transcribe(
-        str(source), language=language, vad_filter=True, log_progress=True
-    )
-    collected = list(segments)
+    transcribe_with_model(model, source, destination, language=language, output_format=output_format)
 
+
+def transcribe_with_model(model: object, source: Path, destination: Path, *, language: str | None, output_format: str) -> None:
+    segments, _ = model.transcribe(str(source), language=language, vad_filter=True, log_progress=True)
+    write_transcript(list(segments), destination, output_format)
+
+
+def write_transcript(segments: Iterable[Segment], destination: Path, output_format: str) -> None:
+    collected = list(segments)
     if output_format == "txt":
         content = "\n".join(item.text.strip() for item in collected if item.text.strip())
-    else:
+    elif output_format == "srt":
         content = build_srt(collected)
-
+    else:
+        raise MediaError("Transcript format must be txt or srt.")
     destination.write_text(content.rstrip() + "\n", encoding="utf-8")
 
 
@@ -52,9 +46,7 @@ def build_srt(segments: Iterable[Segment]) -> str:
         text = segment.text.strip()
         if not text:
             continue
-        blocks.append(
-            f"{number}\n{timestamp(segment.start)} --> {timestamp(segment.end)}\n{text}"
-        )
+        blocks.append(f"{number}\n{timestamp(segment.start)} --> {timestamp(segment.end)}\n{text}")
         number += 1
     return "\n\n".join(blocks)
 

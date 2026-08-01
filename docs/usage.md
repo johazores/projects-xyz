@@ -1,47 +1,89 @@
 # Usage
 
-## Start the API
+## Start the studio
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 python -m app
 ```
 
-Open `http://127.0.0.1:8000/docs`.
+The API documentation is available at `http://127.0.0.1:8000/docs`.
 
-## Optional local tools
+## Job lifecycle
 
-```bash
-python -m pip install -r requirements-local.txt
+Every model or workflow job follows this process:
+
+```text
+submit
+→ queued in SQLite
+→ picked by the single worker
+→ current heavy model is unloaded when necessary
+→ required model is loaded
+→ progress is saved
+→ artifacts and a manifest are written
+→ job completes or fails with a readable error
 ```
 
-This enables faster-whisper transcription and rembg background removal. Bark is separate because it needs a compatible PyTorch install:
+Jobs survive an application restart. A job that was marked as running is moved back to queued when the worker starts again.
+
+## Inspect models
 
 ```bash
-python -m pip install -r requirements-bark.txt
+curl http://127.0.0.1:8000/models
+curl http://127.0.0.1:8000/models/active
 ```
 
-## Main endpoints
+Unload the current model:
 
-- `POST /audio/generate`
-- `POST /audio/convert`
-- `POST /audio/normalize`
-- `POST /audio/enhance`
-- `POST /audio/trim`
-- `POST /audio/transcribe`
-- `POST /image/generate`
-- `POST /image/generate-batch`
-- `POST /image/remove-background`
-- `GET /image/presets`
-- `POST /video/generate`
-- `POST /video/resize`
-- `POST /video/frames`
+```bash
+curl -X POST http://127.0.0.1:8000/models/unload
+```
 
-File-processing endpoints accept a local `input_path`. Use the optional `project` field to group outputs by project.
+Only unload manually while no job is running.
 
-## Output layout
+## Generic model job
+
+```bash
+curl -X POST http://127.0.0.1:8000/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "kind": "model",
+    "target": "speech.kokoro",
+    "payload": {
+      "text": "This narration is generated locally.",
+      "voice": "af_heart",
+      "project": "demo"
+    }
+  }'
+```
+
+## Generic workflow job
+
+```bash
+curl -X POST http://127.0.0.1:8000/jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "kind": "workflow",
+    "target": "youtube.social-clip-prep",
+    "payload": {
+      "input_path": "C:/videos/source.mp4",
+      "project": "episode-01",
+      "preset": "shorts",
+      "transcribe": true
+    }
+  }'
+```
+
+## Check or cancel a job
+
+```bash
+curl http://127.0.0.1:8000/jobs/JOB_ID
+curl -X DELETE http://127.0.0.1:8000/jobs/JOB_ID
+```
+
+Cancellation is cooperative. A model operation stops when it reaches the next progress checkpoint; FFmpeg subprocesses currently finish their active operation before cancellation is applied.
+
+## Output organization
 
 ```text
 outputs/
@@ -49,8 +91,16 @@ outputs/
     audio/
     image/
     video/
+    workflow/
 ```
 
-Without a project value, files are written directly under `outputs/audio`, `outputs/image`, or `outputs/video`.
+Workflow manifests include the request, generated artifact paths, and creation time. Model-specific seeds and revisions will be added when the Sana and LTX adapters are implemented.
 
-See `examples/requests.http` for copy-paste requests.
+## RTX 4060 Ti operating rules
+
+- Run one GPU job at a time.
+- Keep diffusion and video batch size at one.
+- Use 480p generation for video and upscale only selected clips.
+- Use quantized model profiles where available.
+- Keep at least 0.5–1GB of VRAM free.
+- Do not manually load multiple heavyweight models.

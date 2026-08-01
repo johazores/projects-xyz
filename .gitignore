@@ -15,3 +15,5 @@ data/*.db
 data/*.db-*
 data/*.jsonl
 data/*.jsonl-*
+data/voice-consents.json
+data/voice-consents.json.tmp

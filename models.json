@@ -50,16 +50,7 @@
       "dependency_group": "image",
       "packages": ["torch", "diffusers", "nunchaku", "PIL"],
       "notes": "Install the Nunchaku wheel matching Python, PyTorch, CUDA, and Windows or Linux. Never install the unrelated PyPI package named nunchaku.",
-      "options": {
-        "base_model": "Efficient-Large-Model/Sana_1600M_1024px_BF16_diffusers",
-        "transformer_model": "nunchaku-tech/nunchaku-sana/svdq-int4_r32-sana1.6b.safetensors",
-        "variant": "bf16",
-        "width": 1024,
-        "height": 576,
-        "steps": 20,
-        "guidance": 4.5,
-        "max_pixels": 1048576
-      }
+      "options": {"base_model":"Efficient-Large-Model/Sana_1600M_1024px_BF16_diffusers","transformer_model":"nunchaku-tech/nunchaku-sana/svdq-int4_r32-sana1.6b.safetensors","variant":"bf16","width":1024,"height":576,"steps":20,"guidance":4.5,"max_pixels":1048576}
     },
     {
       "id": "image.sdxl-inpaint",
@@ -72,12 +63,7 @@
       "dependency_group": "image",
       "packages": ["torch", "diffusers", "PIL"],
       "notes": "Slower than normal image generation because model components are moved between CPU and GPU.",
-      "options": {
-        "model": "diffusers/stable-diffusion-xl-1.0-inpainting-0.1",
-        "steps": 30,
-        "guidance": 7.0,
-        "strength": 0.95
-      }
+      "options": {"model":"diffusers/stable-diffusion-xl-1.0-inpainting-0.1","steps":30,"guidance":7.0,"strength":0.95}
     },
     {
       "id": "image.birefnet-lite",
@@ -90,7 +76,7 @@
       "dependency_group": "vision",
       "packages": ["torch", "torchvision", "transformers", "PIL"],
       "notes": "Uses the lightweight official checkpoint to minimize model switching time.",
-      "options": {"model": "ZhengPeng7/BiRefNet_lite", "resolution": 1024}
+      "options": {"model":"ZhengPeng7/BiRefNet_lite","resolution":1024}
     },
     {
       "id": "image.realesrgan-ncnn",
@@ -103,12 +89,7 @@
       "dependency_group": "image-tools",
       "executable": "realesrgan-ncnn-vulkan",
       "notes": "Set REALESRGAN_NCNN_PATH on Windows when the executable is not in PATH.",
-      "options": {
-        "executable_env": "REALESRGAN_NCNN_PATH",
-        "model_name": "realesrgan-x4plus",
-        "scale": 2,
-        "tile": 256
-      }
+      "options": {"executable_env":"REALESRGAN_NCNN_PATH","model_name":"realesrgan-x4plus","scale":2,"tile":256}
     },
     {
       "id": "vision.florence-2-large",
@@ -121,7 +102,7 @@
       "dependency_group": "vision",
       "packages": ["torch", "transformers", "PIL"],
       "notes": "Used for candidate descriptions and thumbnail relevance scoring.",
-      "options": {"model": "florence-community/Florence-2-large"}
+      "options": {"model":"florence-community/Florence-2-large"}
     },
     {
       "id": "video.ltx-q8",
@@ -132,32 +113,62 @@
       "recommended": true,
       "vram_gb": 8,
       "dependency_group": "video",
-      "packages": ["torch", "diffusers", "transformers", "accelerate", "PIL"],
       "notes": "Uses an external patched Q8-kernel environment for fastest text-to-video when configured; otherwise uses official Diffusers FP8 layerwise casting and group offloading. Real target-hardware benchmarking is still required.",
-      "options": {
-        "availability": "packages-or-external",
-        "external_repo_env": "LTX_Q8_REPO_PATH",
-        "external_python_env": "LTX_Q8_PYTHON",
-        "external_entrypoint": "inference.py",
-        "q8_transformer": "sayakpaul/q8-ltx-video",
-        "base_model": "Lightricks/LTX-Video",
-        "width": 576,
-        "height": 320,
-        "num_frames": 65,
-        "steps": 20,
-        "fps": 24,
-        "max_pixels": 337920
-      }
+      "packages": ["torch", "diffusers", "transformers", "accelerate", "PIL"],
+      "options": {"availability":"packages-or-external","external_repo_env":"LTX_Q8_REPO_PATH","external_python_env":"LTX_Q8_PYTHON","external_entrypoint":"inference.py","q8_transformer":"sayakpaul/q8-ltx-video","base_model":"Lightricks/LTX-Video","width":576,"height":320,"num_frames":65,"steps":20,"fps":24,"max_pixels":337920}
     },
     {
       "id": "music.ace-step-1.5",
       "capability": "audio.music",
       "adapter": "ace-step",
-      "description": "Planned ACE-Step 1.5 music generation using INT8 and CPU offload.",
-      "implemented": false,
+      "description": "ACE-Step 1.5 music generation through its official localhost REST API.",
+      "implemented": true,
       "recommended": true,
       "vram_gb": 8,
-      "dependency_group": "music"
+      "dependency_group": "music",
+      "packages": [],
+      "notes": "Run the official acestep-api locally with the 2B Turbo model, 0.6B LM, PyTorch backend, INT8, and CPU offload for 6-8GB GPUs.",
+      "options": {"availability":"configured-http","url_env":"ACESTEP_API_URL","key_env":"ACESTEP_API_KEY","model":"acestep-v15-turbo","lm_model":"acestep-5Hz-lm-0.6B","lm_backend":"pt"}
+    },
+    {
+      "id": "audio.stable-audio-small-sfx",
+      "capability": "audio.sound-effect",
+      "adapter": "stable-audio-cli",
+      "description": "Stable Audio 3 Small-SFX generation through the official local CLI.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 0,
+      "dependency_group": "sound-effects",
+      "packages": [],
+      "executable": "stable-audio",
+      "notes": "The official Small-SFX model can run on CPU, so it does not compete with the 8GB GPU during creator workflows.",
+      "options": {"executable_env":"STABLE_AUDIO_CLI","model":"small-sfx"}
+    },
+    {
+      "id": "speech.chatterbox-turbo",
+      "capability": "speech.tts",
+      "adapter": "chatterbox",
+      "description": "Expressive English Chatterbox Turbo voice generation with paralinguistic tags.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 4,
+      "dependency_group": "voices",
+      "packages": ["torch", "torchaudio", "chatterbox"],
+      "notes": "Requires a reference voice and an active local consent record.",
+      "options": {"mode":"turbo"}
+    },
+    {
+      "id": "speech.chatterbox-multilingual-v3",
+      "capability": "speech.tts",
+      "adapter": "chatterbox",
+      "description": "Chatterbox Multilingual V3 speech generation for 23+ languages.",
+      "implemented": true,
+      "recommended": true,
+      "vram_gb": 5,
+      "dependency_group": "voices",
+      "packages": ["torch", "torchaudio", "chatterbox"],
+      "notes": "Reference voice cloning requires an active local consent record.",
+      "options": {"mode":"multilingual-v3"}
     }
   ]
 }

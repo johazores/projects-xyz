@@ -34,6 +34,9 @@ class Settings:
     benchmarks_path: Path = Path(
         os.getenv("MEDIA_BENCHMARKS_FILE", str(ROOT_DIR / "data" / "benchmarks.jsonl"))
     ).expanduser().resolve()
+    voice_consents_path: Path = Path(
+        os.getenv("MEDIA_VOICE_CONSENTS_FILE", str(ROOT_DIR / "data" / "voice-consents.json"))
+    ).expanduser().resolve()
     audio_model: str = os.getenv("MEDIA_AUDIO_MODEL", "suno/bark-small")
     audio_device: str = os.getenv("MEDIA_AUDIO_DEVICE", "auto")
     transcription_model: str = os.getenv("MEDIA_TRANSCRIPTION_MODEL", "small")

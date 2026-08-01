@@ -9,8 +9,10 @@ from pathlib import Path
 import shutil
 from typing import Callable
 
+from app.adapters.ace_step import AceStepAdapter
 from app.adapters.bark import BarkAdapter
 from app.adapters.birefnet import BiRefNetAdapter
+from app.adapters.chatterbox import ChatterboxAdapter
 from app.adapters.faster_whisper import FasterWhisperAdapter
 from app.adapters.florence import FlorenceAdapter
 from app.adapters.kokoro import KokoroAdapter
@@ -18,14 +20,17 @@ from app.adapters.ltx_video import LtxVideoAdapter
 from app.adapters.realesrgan import RealEsrganNcnnAdapter
 from app.adapters.sana import SanaAdapter
 from app.adapters.sdxl_inpaint import SdxlInpaintAdapter
+from app.adapters.stable_audio import StableAudioCliAdapter
 from app.core.adapters import ModelAdapter, ModelSpec
 from app.utils.files import MediaError
 
 AdapterFactory = Callable[[ModelSpec], ModelAdapter]
 
 ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
+    "ace-step": AceStepAdapter,
     "bark": BarkAdapter,
     "birefnet": BiRefNetAdapter,
+    "chatterbox": ChatterboxAdapter,
     "faster-whisper": FasterWhisperAdapter,
     "florence": FlorenceAdapter,
     "kokoro": KokoroAdapter,
@@ -33,6 +38,7 @@ ADAPTER_FACTORIES: dict[str, AdapterFactory] = {
     "realesrgan-ncnn": RealEsrganNcnnAdapter,
     "sana": SanaAdapter,
     "sdxl-inpaint": SdxlInpaintAdapter,
+    "stable-audio-cli": StableAudioCliAdapter,
 }
 
 
@@ -63,9 +69,17 @@ class ModelRegistry:
         if not spec.implemented:
             return False
         packages_available = all(importlib.util.find_spec(name) is not None for name in spec.packages)
-        if spec.options.get("availability") == "packages-or-external":
+        availability = spec.options.get("availability")
+        if availability == "packages-or-external":
             return packages_available or self._external_repo_available(spec)
+        if availability == "configured-http":
+            return self._http_configured(spec)
         return packages_available and self._executable_available(spec)
+
+    @staticmethod
+    def _http_configured(spec: ModelSpec) -> bool:
+        env_name = str(spec.options.get("url_env", ""))
+        return bool(env_name and os.getenv(env_name, "").strip())
 
     @staticmethod
     def _external_repo_available(spec: ModelSpec) -> bool:

@@ -20,7 +20,13 @@ class JobCancelled(RuntimeError):
 
 
 class JobWorker:
-    def __init__(self, store: JobStore, models: ModelManager, projects: ProjectStore, audio_presets: AudioPresetStore):
+    def __init__(
+        self,
+        store: JobStore,
+        models: ModelManager,
+        projects: ProjectStore,
+        audio_presets: AudioPresetStore,
+    ):
         self.store = store
         self.models = models
         self.projects = projects
@@ -66,7 +72,11 @@ class JobWorker:
 
     def resume(self, run_id: str):
         record = self.projects.get(run_id)
-        return self.submit("workflow", str(record["workflow"]), {**dict(record["payload"]), "_run_id": run_id})
+        return self.submit(
+            "workflow",
+            str(record["workflow"]),
+            {**dict(record["payload"]), "_run_id": run_id},
+        )
 
     def cancel(self, job_id: str):
         return self.store.request_cancel(job_id)
@@ -84,6 +94,10 @@ class JobWorker:
 
     def _run(self, job_id: str) -> None:
         if self.store.cancel_requested(job_id):
+            job = self.store.get(job_id)
+            run_id = str(job.payload.get("_run_id", "")) if job.kind == "workflow" else ""
+            if run_id:
+                self.projects.fail(run_id, "Job cancellation requested before start.", cancelled=True)
             self.store.update(job_id, status="cancelled", progress=100, message="Cancelled", finished=True)
             return
         job = self.store.update(job_id, status="running", progress=1, message="Starting", started=True)
@@ -118,7 +132,9 @@ class JobWorker:
             self.store.update(job_id, status="failed", progress=100, message="Failed", error=str(exc), finished=True)
 
     def _prepare_model_payload(self, target: str, payload: dict[str, Any]) -> dict[str, Any]:
-        if payload.get("preset") and (target.startswith("music.") or target.startswith("audio.stable-audio")):
+        if payload.get("preset") and (
+            target.startswith("music.") or target.startswith("audio.stable-audio")
+        ):
             return self.audio_presets.apply(target, payload)
         return dict(payload)
 
@@ -127,13 +143,22 @@ class JobWorker:
         if target == "youtube.ai-short":
             music_preset = prepared.get("music_preset")
             if music_preset and prepared.get("music_prompt"):
-                music = self.audio_presets.apply(str(prepared.get("music_model", "music.ace-step-1.5")), {"prompt": prepared["music_prompt"], "preset": music_preset})
+                music = self.audio_presets.apply(
+                    str(prepared.get("music_model", "music.ace-step-1.5")),
+                    {"prompt": prepared["music_prompt"], "preset": music_preset},
+                )
                 prepared["music_prompt"] = music["prompt"]
             for scene in prepared.get("scenes") or []:
                 if scene.get("sfx_preset") and scene.get("sfx_prompt"):
-                    effect = self.audio_presets.apply(str(prepared.get("sfx_model", "audio.stable-audio-small-sfx")), {"prompt": scene["sfx_prompt"], "preset": scene["sfx_preset"]})
+                    effect = self.audio_presets.apply(
+                        str(prepared.get("sfx_model", "audio.stable-audio-small-sfx")),
+                        {"prompt": scene["sfx_prompt"], "preset": scene["sfx_preset"]},
+                    )
                     scene["sfx_prompt"] = effect["prompt"]
         elif target == "youtube.podcast" and prepared.get("music_preset") and prepared.get("music_prompt"):
-            music = self.audio_presets.apply(str(prepared.get("music_model", "music.ace-step-1.5")), {"prompt": prepared["music_prompt"], "preset": prepared["music_preset"]})
+            music = self.audio_presets.apply(
+                str(prepared.get("music_model", "music.ace-step-1.5")),
+                {"prompt": prepared["music_prompt"], "preset": prepared["music_preset"]},
+            )
             prepared["music_prompt"] = music["prompt"]
         return prepared

@@ -186,3 +186,127 @@ def _fit_filter(width: int, height: int) -> str:
         f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
     )
+
+
+def concatenate_audio(
+    sources: list[Path],
+    destination: Path,
+    *,
+    pauses: list[float] | None = None,
+) -> None:
+    if not sources:
+        raise MediaError("At least one audio source is required.")
+    pauses = pauses or [0.0] * len(sources)
+    if len(pauses) != len(sources):
+        raise MediaError("Audio pause values must match the number of sources.")
+    arguments: list[str] = []
+    for source in sources:
+        arguments.extend(["-i", str(source)])
+    filters: list[str] = []
+    labels: list[str] = []
+    for index, pause in enumerate(pauses):
+        duration = probe_duration(sources[index]) + max(0.0, pause)
+        label = f"a{index}"
+        filters.append(
+            f"[{index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+            f"apad=pad_dur={max(0.0, pause):.3f},atrim=0:{duration:.3f}[{label}]"
+        )
+        labels.append(f"[{label}]")
+    filters.append(f"{''.join(labels)}concat=n={len(sources)}:v=0:a=1[outa]")
+    run_ffmpeg([
+        *arguments,
+        "-filter_complex", ";".join(filters),
+        "-map", "[outa]",
+        "-codec:a", "libmp3lame", "-b:a", "192k",
+        str(destination),
+    ])
+
+
+def mix_background_music(
+    narration: Path,
+    music: Path,
+    destination: Path,
+    *,
+    music_volume: float = 0.12,
+    fade_seconds: float = 2.0,
+) -> None:
+    duration = probe_duration(narration)
+    fade_start = max(0.0, duration - max(0.0, fade_seconds))
+    run_ffmpeg([
+        "-i", str(narration),
+        "-stream_loop", "-1", "-i", str(music),
+        "-filter_complex",
+        (
+            f"[0:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[voice];"
+            f"[1:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+            f"volume={max(0.0, min(1.0, music_volume)):.3f},atrim=0:{duration:.3f},"
+            f"afade=t=out:st={fade_start:.3f}:d={max(0.1, fade_seconds):.3f}[music];"
+            "[voice][music]amix=inputs=2:duration=first:dropout_transition=2,loudnorm[outa]"
+        ),
+        "-map", "[outa]",
+        "-codec:a", "libmp3lame", "-b:a", "192k",
+        str(destination),
+    ])
+
+
+def overlay_audio_cues(
+    base_audio: Path,
+    cues: list[tuple[Path, float, float]],
+    destination: Path,
+) -> None:
+    if not cues:
+        shutil.copy2(base_audio, destination)
+        return
+    arguments = ["-i", str(base_audio)]
+    for source, _, _ in cues:
+        arguments.extend(["-i", str(source)])
+    filters = ["[0:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo[base]"]
+    labels = ["[base]"]
+    for index, (_, start_seconds, volume) in enumerate(cues, start=1):
+        delay = max(0, round(start_seconds * 1000))
+        label = f"cue{index}"
+        filters.append(
+            f"[{index}:a]aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo,"
+            f"volume={max(0.0, min(2.0, volume)):.3f},adelay={delay}|{delay}[{label}]"
+        )
+        labels.append(f"[{label}]")
+    filters.append(
+        f"{''.join(labels)}amix=inputs={len(labels)}:duration=first:dropout_transition=1,loudnorm[outa]"
+    )
+    run_ffmpeg([
+        *arguments,
+        "-filter_complex", ";".join(filters),
+        "-map", "[outa]",
+        "-codec:a", "libmp3lame", "-b:a", "192k",
+        str(destination),
+    ])
+
+
+def analyze_audio(source: Path) -> dict[str, float | bool | None]:
+    executable = shutil.which("ffmpeg")
+    if not executable:
+        raise MediaError("FFmpeg is required for audio validation.")
+    result = subprocess.run(
+        [executable, "-i", str(source), "-af", "volumedetect", "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    stderr = result.stderr
+    mean_volume = _volume_value(stderr, "mean_volume")
+    max_volume = _volume_value(stderr, "max_volume")
+    return {
+        "duration_seconds": round(probe_duration(source), 3),
+        "mean_volume_db": mean_volume,
+        "max_volume_db": max_volume,
+        "clipping_risk": bool(max_volume is not None and max_volume > -0.2),
+    }
+
+
+def _volume_value(output: str, name: str) -> float | None:
+    import re
+
+    match = re.search(rf"{name}:\s*(-?inf|-?[0-9.]+)\s*dB", output)
+    if not match or match.group(1) == "-inf":
+        return None
+    return round(float(match.group(1)), 3)
